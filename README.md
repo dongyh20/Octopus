@@ -1,5 +1,5 @@
 <p align="center" width="100%">
-<img src="assets/octopus.png"  width="40%" height="80%">
+<img src="https://i.mji.rip/2023/10/13/c4bdc6505f2b3f2304bffb5ea196f5a2.png"  width="40%" height="80%">
 </p>
 <div>
 <div align="center">
