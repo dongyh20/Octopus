@@ -3,7 +3,7 @@
 </p>
 <div>
 <div align="center">
-<font size=5><strong>Learning Embodied Vision-Language Programming from Environmental Feedback</strong></font>
+<font size=5><strong>Octopus: Embodied Vision-Language Programmer from Environmental Feedback</strong></font>
 <br>
     <a href='https://jingkang50.github.io/' target='_blank'>Jingkang Yang<sup>*,1</sup></a>&emsp;
     <a href='https://github.com/dongyh20/' target='_blank'>Yuhao Dong<sup>*,2,5</sup></a>&emsp;
@@ -65,8 +65,8 @@ This repository provides:
 
 ## 🏁 Get Started
 1. **Training Data Collection:** For data collection from `octogibson` environment, you need to set up two conda environments: `omnigibson` and `gpt4`. The `omnigibson` environment has an agent to act following the instruction from `gpt4` environment. Please checkout [here](octogibson/README.md) for detailed information.
-2. **Evaluation in OctoGibson:** We provide the pipeline that the simulator send message towards Octopus server and get response to control the agent.
-3. **Evaluation in OctoGTA:** We provide instructions, code, and MOD so that the Octopus can complete tasks in GTA environment. Please checkout [here](octogta/README.md) for detailed information.
+2. **Evaluation in OctoGibson:** We provide the pipeline that the simulator sends messages to the Octopus server and gets responses to control the agent.
+3. **Evaluation in OctoGTA:** We provide instructions, code, and MOD so that the Octopus can complete tasks in the GTA environment. Please checkout [here](octogta/README.md) for detailed information.
 4. **Octopus Training:** We provide code for training Octopus. Please checkout [here](octopus/README.md) for detailed information.
 
 
@@ -74,9 +74,14 @@ This repository provides:
 
 If you found this repository useful, please consider citing:
 ```
-???
+@article{yang2023octopus,
+    author = {Jingkang Yang and Yuhao Dong and Shuai Liu and Bo Li and Ziyue Wang and Chencheng Jiang and Haoran Tan and Jiamu Kang and Yuanhan Zhang and Kaiyang Zhou and Ziwei Liu},
+    title = {Octopus: Embodied Vision-Language Programmer from Environmental Feedback},
+    year = {2023},
+    license = {\url{http://arxiv.org/licenses/nonexclusive-distrib/1.0/}}
+}
 ```
 
 ### 👨‍🏫 Acknowledgements
 
-We thank the [OmniGibson](https://github.com/StanfordVL/OmniGibson) team for their help and great contribution to the open source community.
+We thank the [OmniGibson](https://github.com/StanfordVL/OmniGibson) team for their help and great contribution to the open-source community.
