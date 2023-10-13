@@ -2,7 +2,7 @@
 
 ## 🏁 OmniGibson Setup
 
-You can follow the [OmniGibson Documentation]([Installation - OmniGibson Documentation (stanford.edu)](https://behavior.stanford.edu/omnigibson/getting_started/installation.html)) to install the OmniGibson. We have successfully installed OmniGibson by installing from source. 
+You can follow the [OmniGibson Documentation](https://behavior.stanford.edu/omnigibson/getting_started/installation.html) to install the OmniGibson. We have successfully installed OmniGibson by installing from source. 
 
 After you successfully install the OmniGibson, run the following code to download all the assets needed for the simulation:
 
@@ -48,5 +48,12 @@ print(response['choices'][0]['message']['content'])
 
 If you found this repository useful, please consider citing:
 ```
-???
+@misc{yang2023octopus,
+      title={Octopus: Embodied Vision-Language Programmer from Environmental Feedback}, 
+      author={Jingkang Yang and Yuhao Dong and Shuai Liu and Bo Li and Ziyue Wang and Chencheng Jiang and Haoran Tan and Jiamu Kang and Yuanhan Zhang and Kaiyang Zhou and Ziwei Liu},
+      year={2023},
+      eprint={2310.08588},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV}
+}
 ```
