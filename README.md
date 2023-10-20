@@ -42,7 +42,7 @@
 ![](https://black.readthedocs.io/en/stable/_static/license.svg)
 ![](https://img.shields.io/badge/code%20style-black-000000.svg)
 
-[Project Page](https://choiszt.github.io/Octopus) | [Octopus Paper](https://arxiv.org/)
+[Project Page](https://choiszt.github.io/Octopus) | [Octopus Paper](https://arxiv.org/abs/2310.08588) | [Demo Video](https://www.youtube.com/watch?v=tmSNw2XonxI)
 
 ## 🐙 Introducing Octopus
 Octopus is a novel VLM designed to proficiently decipher an agent’s vision and textual task objectives and to formulate intricate action sequences and generate executable code.
