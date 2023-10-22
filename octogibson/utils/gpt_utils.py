@@ -485,7 +485,7 @@ def extract_tar(source_tarball, output_dir=".", members=None):
 def move_with_backup(*fpath, suffix=".bak"):
     """
     Ensures that a path is not occupied. If there is a file, rename it by
-    adding @suffix. Resursively backs up everything.
+    adding @suffix. Recursively backs up everything.
 
     Args:
         fpath: file path to clear
