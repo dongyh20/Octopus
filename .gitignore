@@ -3,8 +3,6 @@ __pycache__/
 *.py[cod]
 *$py.class
 .vscode/
-octopus/LLaVA/*
-octopus/Otter/*
 
 # C extensions
 *.so
