@@ -45,13 +45,23 @@
 [Project Page](https://choiszt.github.io/Octopus) | [Octopus Paper](https://arxiv.org/abs/2310.08588) | [Demo Video](https://www.youtube.com/watch?v=tmSNw2XonxI)
 
 ## 🐙 Introducing Octopus
-Octopus is a novel VLM designed to proficiently decipher an agent’s vision and textual task objectives and to formulate intricate action sequences and generate executable code.
+Octopus is a novel VLM designed to proficiently decipher an agent’s vision and textual task objectives and to formulate intricate action sequences and generate executable code. We provide two models based on the following architectures. Please click 
+- [LLaVA](./octopus/LLaVA/README.md)
+- [Otter](./octopus/Otter/README.md)
 
-This repository provides:
-- Training data collection pipeline in `octogibson` environment,
-- Evaluation pipeline in `octogibson` environment,
-- Evaluation pipeline in `octogta` environment,
-- Training pipeline of the `octopus` model.
+## 🪸 Introducing OctoVerse
+OctoVerse contains three sub-worlds
+|               | OS (tested)      | Environment Goal                   |
+|---------------|------------------|------------------------------------|
+| **OctoGibson** | Ubuntu 20.04     | 500 Tasks on OmniGibson            |
+| **OctoGTA**    | Windows 11       | 20 Tasks to evaluate transfer learning |
+| **OctoMC**     | Ubuntu/Windows   | 20 Tasks to evaluate transfer learning on MineCraft worlds, such as making an axe. |
+
+
+- Training data collection pipeline in `octogibson` environment
+- Evaluation pipeline in `octogibson` environment
+- Evaluation pipeline in `octogta` environment
+- Training pipeline of the `octopus` model
 
 **Contact: Leave issue or contact `jingkang001@e.ntu.edu.sg` and `dongyh20@mails.tsinghua.edu.cn`. We are on call to respond.**
 
@@ -75,10 +85,9 @@ This repository provides:
 If you found this repository useful, please consider citing:
 ```
 @article{yang2023octopus,
-    author = {Jingkang Yang and Yuhao Dong and Shuai Liu and Bo Li and Ziyue Wang and Chencheng Jiang and Haoran Tan and Jiamu Kang and Yuanhan Zhang and Kaiyang Zhou and Ziwei Liu},
     title = {Octopus: Embodied Vision-Language Programmer from Environmental Feedback},
+    author = {Jingkang Yang and Yuhao Dong and Shuai Liu and Bo Li and Ziyue Wang and Chencheng Jiang and Haoran Tan and Jiamu Kang and Yuanhan Zhang and Kaiyang Zhou and Ziwei Liu},
     year = {2023},
-    license = {\url{http://arxiv.org/licenses/nonexclusive-distrib/1.0/}}
 }
 ```
 

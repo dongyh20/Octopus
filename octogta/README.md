@@ -58,5 +58,3 @@ To test scripts conveniently, we provide a 100% save file, to load this save fil
 
 1. Copy the save file provided [here](https://github.com/dongyh20/Octopus/files/14026861/SGTA50001.txt) to C:\Users\user_name\Documents\Rockstar Games\GTA V\Profiles\random_number
 2. Restart the game, go to SETTINGS\GAME\LOAD GAME, select the save point.
-
-
