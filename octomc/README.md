@@ -7,22 +7,22 @@ Voyager requires Python ≥ 3.9 and Node.js ≥ 16.13.0. We have tested on Ubunt
 
 ## Python Install
 ```
-git clone https://github.com/dongyh20/Octopus.git
-cd octomc
+git clone https://github.com/MineDojo/Voyager
+cd Voyager
 pip install -e .
 ```
 
 ## Node.js Install
 In addition to the Python dependencies, you need to install the following Node.js packages:
 ```
-cd octomc/env/mineflayer
+cd voyager/env/mineflayer
 npm install -g npx
 npm install
 cd mineflayer-collectblock
 npx tsc
 cd ..
 npm install
-npm install robotjs # Choiszt: For the capturing pipeline
+npm install robotjs # For the capturing pipeline
 ```
 
 ## Minecraft Instance Install
