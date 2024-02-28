@@ -1,0 +1,6 @@
+process:
+  sub_num: 15
+  log_path: "/PATH/TO/LOG/JSON"
+  data_path: "/PATH/TO/DATA/DIR"
+  task_path: "/PATH/TO/TASK/JSON"
+  config_path: "/PATH/TO/OCTOGIBSON/YAML"
