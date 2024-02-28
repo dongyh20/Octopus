@@ -1,21 +1,21 @@
 # Octomc
 
-In this repo, we provide Voyager code. This codebase is under [MIT License](LICENSE).
+In this repo, we provide OctoMC code. This codebase is under [MIT License](LICENSE).
 
 # Installation
 Voyager requires Python ≥ 3.9 and Node.js ≥ 16.13.0. We have tested on Ubuntu 20.04, Windows 11, and macOS. You need to follow the instructions below to install Voyager.
 
 ## Python Install
 ```
-git clone https://github.com/MineDojo/Voyager
-cd Voyager
+git clone https://github.com/dongyh20/Octopus.git
+cd octomc
 pip install -e .
 ```
 
 ## Node.js Install
 In addition to the Python dependencies, you need to install the following Node.js packages:
 ```
-cd voyager/env/mineflayer
+cd octomc/env/mineflayer
 npm install -g npx
 npm install
 cd mineflayer-collectblock
