@@ -1,47 +1,118 @@
-# OctoGibson
+# Octomc
 
-## 🏁 OmniGibson Setup
+In this repo, we provide Voyager code. This codebase is under [MIT License](LICENSE).
 
-You can follow the [OmniGibson Documentation](https://behavior.stanford.edu/omnigibson/getting_started/installation.html) to install the OmniGibson. We have successfully installed OmniGibson by installing from source. 
+# Installation
+Voyager requires Python ≥ 3.9 and Node.js ≥ 16.13.0. We have tested on Ubuntu 20.04, Windows 11, and macOS. You need to follow the instructions below to install Voyager.
 
-After you successfully install the OmniGibson, run the following code to download all the assets needed for the simulation:
-
-```python
-cd OmniGibson
-python scripts/download_datasets.py
+## Python Install
+```
+git clone https://github.com/MineDojo/Voyager
+cd Voyager
+pip install -e .
 ```
 
-Now, you may use the scripts below to try a simple demo provided by OmniGibson to test whether the installation is correct:
-
-```python
-python -m omnigibson.examples.scenes.scene_selector 
+## Node.js Install
+In addition to the Python dependencies, you need to install the following Node.js packages:
+```
+cd voyager/env/mineflayer
+npm install -g npx
+npm install
+cd mineflayer-collectblock
+npx tsc
+cd ..
+npm install
+npm install robotjs # Choiszt: For the capturing pipeline
 ```
 
-## 🏁 GPT-4 API Setup
+## Minecraft Instance Install
 
-Note that our experiments are conducted with the **GPT-4 32k** API provided by Azure OpenAI. As requirements are needed for GPT-4 as well as GPT-4 32k API, we strongly suggest you follow the [Azure Documentation](https://learn.microsoft.com/en-us/azure/ai-services/openai/chatgpt-quickstart?tabs=command-line&pivots=programming-language-studio) to get your own GPT-4 32k deployment.
+Voyager depends on Minecraft game. You need to install Minecraft game and set up a Minecraft instance.
 
-After deploying your own GPT-4 32k API model, you may test your deployment with the code:
+Follow the instructions in [Minecraft Login Tutorial](installation/minecraft_instance_install.md) to set up your Minecraft Instance.
 
+## Fabric Mods Install
+
+You need to install fabric mods to support all the features in Voyager. Remember to use the correct Fabric version of all the mods. 
+
+Follow the instructions in [Fabric Mods Install](installation/fabric_mods_install.md) to install the mods.
+
+# Getting Started
+Voyager uses OpenAI's GPT-4 as the language model. You need to have an OpenAI API key to use Voyager. You can get one from [here](https://platform.openai.com/account/api-keys).
+
+After the installation process, you can run Voyager by:
 ```python
-import os
-import openai
-openai.api_type = "azure"
-openai.api_base = "/URL/FOR/YOUR/API/BASE" # replace it according to your deployment
-openai.api_version = "YOUR API VERSION" # replace it according to your deployment
-openai.api_key = "YOUR API KEY" # replace it according to your deployment
+from voyager import Voyager
 
-response = openai.ChatCompletion.create(
-    engine="YOUR ENGINE NAME",
-    messages = [{"role":"user","content":"Hello, I'm Octopus."}],
-    temperature=0,
-    max_tokens=8000,
-    top_p=0.95,
-    frequency_penalty=0,
-    presence_penalty=0,
-    stop=None)
-print(response['choices'][0]['message']['content'])
+# You can also use mc_port instead of azure_login, but azure_login is highly recommended
+azure_login = {
+    "client_id": "YOUR_CLIENT_ID",
+    "redirect_url": "https://127.0.0.1/auth-response",
+    "secret_value": "[OPTIONAL] YOUR_SECRET_VALUE",
+    "version": "fabric-loader-0.14.18-1.19", # the version Voyager is tested on
+}
+openai_api_key = "YOUR_API_KEY"
+
+voyager = Voyager(
+    azure_login=azure_login,
+    openai_api_key=openai_api_key,
+)
+
+# start lifelong learning
+voyager.learn()
 ```
+
+* If you are running with `Azure Login` for the first time, it will ask you to follow the command line instruction to generate a config file.
+* For `Azure Login`, you also need to select the world and open the world to LAN by yourself. After you run `voyager.learn()` the game will pop up soon, you need to:
+  1. Select `Singleplayer` and press `Create New World`.
+  2. Set Game Mode to `Creative` and Difficulty to `Peaceful`.
+  3. After the world is created, press `Esc` key and press `Open to LAN`.
+  4. Select `Allow cheats: ON` and press `Start LAN World`. You will see the bot join the world soon. 
+
+# Resume from a checkpoint during learning
+
+If you stop the learning process and want to resume from a checkpoint later, you can instantiate Voyager by:
+```python
+from voyager import Voyager
+
+voyager = Voyager(
+    azure_login=azure_login,
+    openai_api_key=openai_api_key,
+    ckpt_dir="YOUR_CKPT_DIR",
+    resume=True,
+)
+```
+
+# Run Voyager for a specific task with a learned skill library
+
+If you want to run Voyager for a specific task with a learned skill library, you should first pass the skill library directory to Voyager:
+```python
+from voyager import Voyager
+
+# First instantiate Voyager with skill_library_dir.
+voyager = Voyager(
+    azure_login=azure_login,
+    openai_api_key=openai_api_key,
+    skill_library_dir="./skill_library/trial1", # Load a learned skill library.
+    ckpt_dir="YOUR_CKPT_DIR", # Feel free to use a new dir. Do not use the same dir as skill library because new events will still be recorded to ckpt_dir. 
+    resume=False, # Do not resume from a skill library because this is not learning.
+)
+```
+Then, you can run task decomposition. Notice: Occasionally, the task decomposition may not be logical. If you notice the printed sub-goals are flawed, you can rerun the decomposition.
+```python
+# Run task decomposition
+task = "YOUR TASK" # e.g. "Craft a diamond pickaxe"
+sub_goals = voyager.decompose_task(task=task)
+```
+Finally, you can run the sub-goals with the learned skill library:
+```python
+voyager.inference(sub_goals=sub_goals)
+```
+
+For all valid skill libraries, see [Learned Skill Libraries](skill_library/README.md).
+
+# FAQ
+If you have any questions, please check our [FAQ](FAQ.md) first before opening an issue.
 
 
 ## 📑 Citation
