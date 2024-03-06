@@ -258,12 +258,14 @@ class Voyager:
             success = True
             while success:
                 try:
-                    response = self.action_agent.gpt_request(content)
+                    response = self.action_agent.gpt_request(system_message.content,human_message.content)
                     answer =  self.action_agent.process_ai_message(response)
-                    if len(answer['code'].split("Subtask"))>2: #more than one subtask
-                        self.action_agent.record_history(subtask=answer['subtask'], code=answer['code'],error='Your code has more than one Subtask')
-                        human_message = self.action_agent.render_human_message(current_data,task,critique=critique)
-                        continue
+                    if(subtask_iter==1): #just modified the code at the first round
+                        if len(answer['code'].split("Subtask"))>2: #more than one subtask
+                            # self.action_agent.record_history(subtask=answer['subtask'], code=answer['code'],error='Your code has more than one Subtask')
+                            self.action_agent.record_history('','',error='Your code has more than one Subtask')                        
+                            human_message = self.action_agent.render_human_message(current_data,task,critique=critique)
+                            continue
                     success = False
                     print(response)
                 except Exception as e:
@@ -278,6 +280,7 @@ class Voyager:
                     #     success = True
                     #     response = {"error_message": str(e)}
                     #     print(response)
+                gu.save_response(sub_save_path,answer)
             main_succeed = False
 
             # get feedback from simulator
@@ -294,6 +297,8 @@ class Voyager:
                 subtask, code = answer['subtask'], answer['code']
                 if isinstance(answer, dict):
                     code = answer["code"] + "\n" + answer["exec_code"]
+                    with open(os.path.join(sub_save_path, "code.js"),"w+")as f:
+                        f.write(code)     
                     events = self.env.send( #execute code
                         code,
                         programs=self.skill_manager.programs+self.prog,
@@ -312,10 +317,23 @@ class Voyager:
                         context=self.context,
                         chest_observation=self.action_agent.render_chest_observation(),
                         max_retries=5,
-                    )   
+                    )  
+                    # gu.save_feedback(feedback_path, subtask, code, error, critic, reset, main_succeed)
+                else:
+                    subtask = subtask
+                    error = error_message
+                    critic = 'fail'
+                    reset = False
+                    self.action_agent.record_history(subtask=answer['subtask'], code=answer['code'],error=error)
+
                 if success: #main_task success
+                    main_succeed=True
                     print(f"{task} success! Congrats!")
+                    gu.save_feedback(feedback_path, subtask, code, error, critic, reset, main_succeed)
                     break
+                else:
+                    main_succeed=False
+                    gu.save_feedback(feedback_path, subtask, code, error, critic, reset, main_succeed)
                 subtask_iter+=1
                 # else:
                 #     subtask = subtask
@@ -468,8 +486,9 @@ class Voyager:
         )
         # step to peek an observation
         self.env.step(
-            "bot.chat(`/time set ${getNextTime()}`);\n"
-            + f"bot.chat('/difficulty {difficulty}');"
+            # "bot.chat(`/time set ${getNextTime()}`);\n"
+            # + 
+            f"bot.chat('/difficulty {difficulty}');"
         )
         self.env.unpause()
         send=self.env.send #post the command to Minecraft

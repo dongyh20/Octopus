@@ -12,10 +12,15 @@ azure_login = {
 from agents.choiszt_keyboard import change_gamemode
 # change_gamemode("spectator")
 voyager = Voyager(
-    mc_port=36253,
+    mc_port=35353,
     openai_api_key=openai.api_key,
 )
 
 # start lifelong learning
-voyager.capture("Mine 1 wood log")
+task="Kill 2 pigs"
+
+# Kill a llama
+# Kill 2 pigs
+
+voyager.capture(task)
 

@@ -19,7 +19,15 @@ def capture(send,programs):
     return json.loads((send(code,programs)).json())
 
 def initial(send,programs):
-    command=f"bot.chat('/execute as bot at @s run tp @s -270 64 251');"
+    # command=f"bot.chat('/execute as bot at @s run tp @s -38627 77 36953');" #stone
+    # command=f"bot.chat('/execute as bot at @s run tp @s 3267 66 -2828');" #dirt
+    # command=f"bot.chat('/execute as bot at @s run tp @s 3355 71 -3207');" #beach
+    # command=f"bot.chat('/execute as bot at @s run tp @s 5849 88 -820');" #jungle
+    # command=f"bot.chat('/execute as bot at @s run tp @s -91 66 563');" #forest
+    # command=f"bot.chat('/execute as bot at @s run tp @s -321 74 545');" #village
+    # command=f"bot.chat('/execute as bot at @s run tp @s 5195 77 -4468');" #village    
+    # command=f"bot.chat('/execute as bot at @s run tp @s 5271 73 -4302');" #village 
+    command=f"bot.chat('/execute as bot at @s run tp @s 5305 64 -4549');"       
     send(command,programs=programs)
 
 def move(send,programs):

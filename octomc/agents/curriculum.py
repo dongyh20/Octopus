@@ -62,11 +62,11 @@ class Octopus_CurriculumAgent:
             self.failed_tasks = []
             self.qa_cache = {}
         # vectordb for qa cache
-        self.client = chromadb.PersistentClient(path=f"{ckpt_dir}/curriculum/vectordb")
-        try:
-            self.collection = self.client.create_collection(name="qa_cache_questions_vectordb") #if exist
-        except:
-            self.collection=self.client.get_collection("qa_cache_questions_vectordb")
+        # self.client = chromadb.PersistentClient(path=f"{ckpt_dir}/curriculum/vectordb")
+        # try:
+        #     self.collection = self.client.create_collection(name="qa_cache_questions_vectordb") #if exist
+        # except:
+        #     self.collection=self.client.get_collection("qa_cache_questions_vectordb")
         # self.qa_cache_questions_vectordb = Chroma(
         #     collection_name="qa_cache_questions_vectordb",
         #     embedding_function=OpenAIEmbeddings(),

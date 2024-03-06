@@ -73,7 +73,7 @@ class OpenAIGPT4Vision(BaseModel):
 
 if __name__ == "__main__":
     # Use your own API key here
-    api_key = "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"
+    api_key = "YOUR API KEY"
     model = OpenAIGPT4Vision(api_key)
     image = Image.open("/home/luodian/projects/Otter/archived/data/G4_IMG_00001.png").convert("RGB")
     print(model.generate("What’s in this image?", image))

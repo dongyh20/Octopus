@@ -25,9 +25,6 @@ Subtasks:
 ...
 Code:
 ```javascript
-// helper functions (only if needed, try to avoid them)
-...
-// main function after the helper functions
 async function yourMainFunctionName(bot) {
 	// await teleport(yaw=5.24,distance=28.5) #Subtask1: perceive and go near by the sand block
 }

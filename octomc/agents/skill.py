@@ -42,11 +42,11 @@ class Octopus_SkillManager:
             self.skills = {}
         self.retrieval_top_k = retrieval_top_k
         self.ckpt_dir = ckpt_dir
-        self.client = chromadb.PersistentClient(path=f"{ckpt_dir}/skill/vectordb")
-        try:
-            self.collection = self.client.create_collection(name="skill_vectordb") #if exist
-        except:
-            self.collection=self.client.get_collection("skill_vectordb")
+        # self.client = chromadb.PersistentClient(path=f"{ckpt_dir}/skill/vectordb")
+        # try:
+        #     self.collection = self.client.create_collection(name="skill_vectordb") #if exist
+        # except:
+        #     self.collection=self.client.get_collection("skill_vectordb")
         # self.vectordb = Chroma(
         #     collection_name="skill_vectordb",
         #     embedding_function=OpenAIEmbeddings(),

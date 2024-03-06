@@ -1,11 +1,11 @@
 const angles = [0, 90, 180, 270];
 const PI = Math.PI
 
-function get_see_SurroundingBlocks(bot, x_distance, y_distance, z_distance) {
+function get_see_SurroundingBlocks(bot, x_distance, y_distance, z_distance,index) {
   const surroundingBlocks = new Set();
-  if ((Math.sin(bot.entity.yaw))>=0 && (Math.cos(bot.entity.yaw))>=0){  //-x -z
+  if (index==0){  // -z
       // bot.chat(`CASE1`)
-      for (let x = -x_distance; x <= 0; x++) {
+      for (let x = -x_distance; x <= x_distance; x++) {
           for (let y = -y_distance; y <= y_distance; y++) {
               for (let z = -z_distance; z <= 0; z++) { 
                   const block = bot.blockAt(bot.entity.position.offset(x, y, z));
@@ -20,11 +20,11 @@ function get_see_SurroundingBlocks(bot, x_distance, y_distance, z_distance) {
           }
       }
   }
-  if ((Math.sin(bot.entity.yaw))>=0 && (Math.cos(bot.entity.yaw))<=0){  //-x +z
+  if (index==1){  //-x 
       // bot.chat(`CASE2`)
       for (let x = -x_distance; x <= 0; x++) {
           for (let y = -y_distance; y <= y_distance; y++) {
-              for (let z =0; z <= z_distance; z++) { 
+              for (let z =-z_distance; z <= z_distance; z++) { 
                   const block = bot.blockAt(bot.entity.position.offset(x, y, z));
                   if (block && block.type !== 0) {
                       if (bot.canSeeBlock(block)){ //if the bot can see the block
@@ -37,9 +37,9 @@ function get_see_SurroundingBlocks(bot, x_distance, y_distance, z_distance) {
       }
   }
 
-  if ((Math.sin(bot.entity.yaw))<=0 && (Math.cos(bot.entity.yaw))<=0){  //+x +z
+  if (index==2){  // +z
       // bot.chat(`CASE3`)
-      for (let x = 0; x <= x_distance; x++) {
+      for (let x = -x_distance; x <= x_distance; x++) {
           for (let y = -y_distance; y <= y_distance; y++) {
               for (let z =0; z <= z_distance; z++) { 
                   const block = bot.blockAt(bot.entity.position.offset(x, y, z));
@@ -54,11 +54,11 @@ function get_see_SurroundingBlocks(bot, x_distance, y_distance, z_distance) {
       }
   }
 
-  if ((Math.sin(bot.entity.yaw))<=0 && (Math.cos(bot.entity.yaw))>=0){  //+x -z
+  if (index==3){  //+x 
       // bot.chat(`CASE4`)
       for (let x = 0; x <= x_distance; x++) {
           for (let y = -y_distance; y <= y_distance; y++) {
-              for (let z =z_distance; z <= 0; z++) { 
+              for (let z =-z_distance; z <= z_distance; z++) { 
                   const block = bot.blockAt(bot.entity.position.offset(x, y, z));
                   if (block && block.type !== 0) {
                       if (bot.canSeeBlock(block)){ //if the bot can see the block
@@ -73,6 +73,78 @@ function get_see_SurroundingBlocks(bot, x_distance, y_distance, z_distance) {
   // console.log(surroundingBlocks);
   return surroundingBlocks;
 }
+// function get_see_SurroundingBlocks(bot, x_distance, y_distance, z_distance) {
+//   const surroundingBlocks = new Set();
+//   if ((Math.sin(bot.entity.yaw))>=0 && (Math.cos(bot.entity.yaw))>=0){  //-x -z
+//       // bot.chat(`CASE1`)
+//       for (let x = -x_distance; x <= 0; x++) {
+//           for (let y = -y_distance; y <= y_distance; y++) {
+//               for (let z = -z_distance; z <= 0; z++) { 
+//                   const block = bot.blockAt(bot.entity.position.offset(x, y, z));
+//                   if (block && block.type !== 0) {
+//                       if (bot.canSeeBlock(block)){ //if the bot can see the block
+//                           // bot.chat(`${}`)
+//                           surroundingBlocks.add([block.name,cal_distance_by_block(bot,block)]);
+//                       }
+                      
+//                   }
+//               }
+//           }
+//       }
+//   }
+//   if ((Math.sin(bot.entity.yaw))>=0 && (Math.cos(bot.entity.yaw))<=0){  //-x +z
+//       // bot.chat(`CASE2`)
+//       for (let x = -x_distance; x <= 0; x++) {
+//           for (let y = -y_distance; y <= y_distance; y++) {
+//               for (let z =0; z <= z_distance; z++) { 
+//                   const block = bot.blockAt(bot.entity.position.offset(x, y, z));
+//                   if (block && block.type !== 0) {
+//                       if (bot.canSeeBlock(block)){ //if the bot can see the block
+//                           surroundingBlocks.add([block.name,cal_distance_by_block(bot,block)]);
+//                       }
+                      
+//                   }
+//               }
+//           }
+//       }
+//   }
+
+//   if ((Math.sin(bot.entity.yaw))<=0 && (Math.cos(bot.entity.yaw))<=0){  //+x +z
+//       // bot.chat(`CASE3`)
+//       for (let x = 0; x <= x_distance; x++) {
+//           for (let y = -y_distance; y <= y_distance; y++) {
+//               for (let z =0; z <= z_distance; z++) { 
+//                   const block = bot.blockAt(bot.entity.position.offset(x, y, z));
+//                   if (block && block.type !== 0) {
+//                       if (bot.canSeeBlock(block)){ //if the bot can see the block
+//                           surroundingBlocks.add([block.name,cal_distance_by_block(bot,block)]);
+//                       }
+                      
+//                   }
+//               }
+//           }
+//       }
+//   }
+
+//   if ((Math.sin(bot.entity.yaw))<=0 && (Math.cos(bot.entity.yaw))>=0){  //+x -z
+//       // bot.chat(`CASE4`)
+//       for (let x = 0; x <= x_distance; x++) {
+//           for (let y = -y_distance; y <= y_distance; y++) {
+//               for (let z =-z_distance; z <= 0; z++) { 
+//                   const block = bot.blockAt(bot.entity.position.offset(x, y, z));
+//                   if (block && block.type !== 0) {
+//                       if (bot.canSeeBlock(block)){ //if the bot can see the block
+//                           surroundingBlocks.add([block.name,cal_distance_by_block(bot,block)]);
+//                       }
+                      
+//                   }
+//               }
+//           }
+//       }
+//   }
+//   // console.log(surroundingBlocks);
+//   return surroundingBlocks;
+// }
 
 // Utility Functions:
 function delay(ms) {
@@ -169,7 +241,7 @@ function teleport(rot, dis) {
       const dx = -dis * Math.sin(rot);
       x = x + dx;
       z = z + dz;
-      bot.chat(`/tp ${x} ${y + 5} ${z}`);
+      bot.chat(`/tp ${x} ${y + 3} ${z}`);
       delay(2000);
       resolve(); 
     } catch (error) {
@@ -182,15 +254,16 @@ function teleport(rot, dis) {
 async function look_around() {
   // yaw = bot.entity.yaw
   yaw = 0
-  for (let index = 0; index < 6; index++) {
+  for (let index = 0; index < 4; index++) {
     // bot.chat(`${bot.entity.yaw}`)
-    blockinfo=get_see_SurroundingBlocks(bot, Math.abs(Math.floor(100*Math.sin(bot.entity.yaw))), 2, Math.abs(Math.floor(100*Math.cos(bot.entity.yaw))))
-    bot.chat(`pic${index+1}:{${Array.from(blockinfo)}},yaw:${yaw.toFixed(2)}`)
+    // blockinfo=get_see_SurroundingBlocks(bot, Math.abs(Math.floor(100*Math.sin(bot.entity.yaw))), 2, Math.abs(Math.floor(100*Math.cos(bot.entity.yaw))))
+    blockinfo=get_see_SurroundingBlocks(bot, 20,3,20,index)
+    bot.chat(`pic${index+1}:{${Array.from(blockinfo)}},yaw=${yaw.toFixed(2)}`)
     await bot.look(yaw, 0);
     await delay(1000);
     await screenshot();
     // 停留一秒钟
-    yaw=yaw+Math.PI/3;
+    yaw=yaw+Math.PI/2;
   }
 }
 
