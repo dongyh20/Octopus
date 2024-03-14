@@ -320,7 +320,7 @@ def main():
     if args.pretrained_model_name_or_path is not None:
         master_print(f"Loading pretrained model from {args.pretrained_model_name_or_path}")
         device_map = {"": device_id} if accelerator.distributed_type == "MULTI_GPU" or accelerator.distributed_type == "DEEPSPEED" else "auto"
-        kwargs = {"local_files_only": args.offline, "device_map": device_map}
+        kwargs = {"local_files_only": args.offline, "device_map": device_map, "ignore_mismatched_sizes": True}
 
         if accelerator.distributed_type == "DEEPSPEED" and accelerator.state.deepspeed_plugin.zero_stage == 3:
             kwargs.pop("device_map")
