@@ -1,57 +1,60 @@
 import time
 import pyautogui
 
-# 等待一些时间以确保切换到Minecraft窗口
+# Wait some time to ensure the switch to the Minecraft window
 def rotate():
-    yaws=[0,90,180,270]
+    yaws = [0, 90, 180, 270]
     for yaw in yaws:
-        pyautogui.press('t')
+        pyautogui.press('t')  # Press 't' to open chat
 
-    # 发送两次Backspace（如果需要清除之前的内容）
+        # Press backspace twice (if needed to clear previous content)
         pyautogui.press('backspace')
         pyautogui.press('backspace')
-        command=f"/execute as bot at @s run tp @s ~ ~ ~ {yaw} 0"
+        command = f"/execute as bot at @s run tp @s ~ ~ ~ {yaw} 0"
         pyautogui.write(command)
-        time.sleep(1)
-        pyautogui.press('enter')
-def change_to_bot():
-    time.sleep(0.5)
+        time.sleep(1)  # Wait a moment for the command to register
+        pyautogui.press('enter')  # Send the command
 
-    # 发送按键 "t" 打开聊天框
+def change_to_bot():
+    time.sleep(0.5)  # Short wait
+
+    # Press 't' to open chat
     pyautogui.press('t')
 
-    # 发送两次Backspace（如果需要清除之前的内容）
+    # Press backspace twice (if needed to clear previous content)
     pyautogui.press('backspace')
     pyautogui.press('backspace')
 
-    # 发送/spectate bot命令
+    # Send /spectate bot command
     command = "/spectate bot"
     pyautogui.write(command)
-    time.sleep(1)
-    pyautogui.press('enter')
-def capture():
-    time.sleep
-    pyautogui.press('f2')
-def change_gamemode(mode):
-    time.sleep(1)
+    time.sleep(1)  # Wait a moment for the command to register
+    pyautogui.press('enter')  # Send the command
 
-    # 发送按键 "t" 打开聊天框
+def capture():
+    time.sleep(0.5)  # Short wait
+    pyautogui.press('f2')  # Press F2 to take a screenshot
+
+def change_gamemode(mode):
+    time.sleep(1)  # Short wait
+
+    # Press 't' to open chat
     pyautogui.press('t')
 
-    # 发送两次Backspace（如果需要清除之前的内容）
+    # Press backspace twice (if needed to clear previous content)
     pyautogui.press('backspace')
     pyautogui.press('backspace')
 
-    # 发送/spectate bot命令
-    if mode=="spectator":
+    # Send change gamemode command
+    if mode == "spectator":
         command = "/gamemode spectator"
     else:
-        command="/gamemode creative"
+        command = "/gamemode creative"
     pyautogui.write(command)
-    time.sleep(1)
-    pyautogui.press('enter')
+    time.sleep(1)  # Wait a moment for the command to register
+    pyautogui.press('enter')  # Send the command
 
-if __name__=="__main__":
+if __name__ == "__main__":
     while True:
         change_to_bot()
         change_gamemode("spectator")
