@@ -10,7 +10,7 @@ from agents import OctopusAgent
 from agents import Octopus_CriticAgent
 from agents import Octopus_CurriculumAgent
 from agents import Octopus_SkillManager
-from agents.choiszt_keyboard import *
+from agents.system_keyboard import *
 # from .agents.azure_query import gpt_request
 from agents import bot_keyboard
 import utils.gpt_utils as gu 

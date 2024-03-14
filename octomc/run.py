@@ -9,7 +9,7 @@ azure_login = {
     "secret_value": "None",
     "version": "fabric-loader-0.14.18-1.19", # the version Voyager is tested on
 }
-from agents.choiszt_keyboard import change_gamemode
+from octomc.agents.system_keyboard import change_gamemode
 # change_gamemode("spectator")
 voyager = Voyager(
     mc_port=35353,

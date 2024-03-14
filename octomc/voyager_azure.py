@@ -10,7 +10,7 @@ from .agents import ActionAgent,OctopusAgent
 from .agents import CriticAgent,Octopus_CriticAgent
 from .agents import CurriculumAgent,Octopus_CurriculumAgent
 from .agents import SkillManager,Octopus_SkillManager
-from .agents.choiszt_keyboard import *
+from .agents.system_keyboard import *
 # from .agents.azure_query import gpt_request
 
 # TODO: remove event memory
