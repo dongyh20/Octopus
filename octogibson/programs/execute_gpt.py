@@ -16,7 +16,7 @@ def parse_args():
     description = "EVLM_gpt_process"
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument('idx', type=int, help='Index for data entry')
-    parser.add_argument('process_path', type=str, default="/PATH/TO/CONFIG", help='path for loading process config')
+    parser.add_argument('process_path', type=str, default="octogibson/config/Octogibson.yaml", help='path for loading process config')
     return parser.parse_args()
 
 

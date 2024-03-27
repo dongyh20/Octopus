@@ -19,7 +19,7 @@ def parse_args():
     description = "EVLM_sim_process"
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument('idx', type=int, help='Index for data entry')
-    parser.add_argument('process_path', type=str, default="/PATH/TO/CONFIG", help='path for loading process config')
+    parser.add_argument('process_path', type=str, default="octogibson/config/Octogibson.yaml", help='path for loading process config')
     parser.add_argument("-l", "--/log/level", type=str, help="error log 1", required=True)
     parser.add_argument("-f", "--/log/fileLogLevel", type=str, help="error log 2", required=True)
     parser.add_argument("-o", "--/log/outputStreamLevel", type=str, help="error log 3", required=True)
