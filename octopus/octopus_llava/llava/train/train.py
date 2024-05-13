@@ -34,7 +34,6 @@ from llava.constants import IGNORE_INDEX, DEFAULT_IMAGE_TOKEN, DEFAULT_IM_START_
 from llava.constants import *
 from torch.utils.data import Dataset
 from llava.train.llava_trainer import LLaVATrainer
-from llava.train.EgoGPT_trainer import EgoGPT_trainer
 
 from llava import conversation as conversation_lib
 from llava.model import *
@@ -52,9 +51,6 @@ import numpy as np
 from transformers import AutoConfig
 
 import math
-
-from llava.model.multimodal_encoder.egogpt_imagebind.models.imagebind_model import ModalityType
-from llava.model.multimodal_encoder.egogpt_imagebind import data as egogpt_processor
 
 local_rank = None
 
@@ -882,7 +878,7 @@ class LazySupervisedDataset(Dataset):
 
         rank0_print("Formatting inputs...Skip in lazy mode")
         self.tokenizer = tokenizer
-        self.list_data_dict = list_data_dict
+        self.list_data_dict = list_data_dict['data']
         self.data_args = data_args
 
     def __len__(self):
@@ -1149,267 +1145,15 @@ class LazySupervisedDataset(Dataset):
         if prompt is not None:
             data_dict['prompt'] = prompt
 
-        return data_dict
-class EgoGPTDataset(LazySupervisedDataset):
-    """Dataset for supervised fine-tuning."""
-    
-    def __init__(self, data_path: str,
-                 tokenizer: transformers.PreTrainedTokenizer,
-                 data_args: DataArguments):
-        
-
-        super(LazySupervisedDataset, self).__init__()
-        EgoGPTdata = json.load(open(data_path, "r"))
-
-        rank0_print("Formatting inputs...Skip in lazy mode")
-        self.tokenizer = tokenizer
-        self.EgoGPTdata = EgoGPTdata
-        self.data_args = data_args
-        # list_data_dict = json.load(open(data_path, "r"))
-        # self._get_item(2)
-        # rank0_print("Formatting inputs...Skip in lazy mode")
-        # self.tokenizer = tokenizer
-        # self.EgoGPTdata = list_data_dict
-        # self.data_args = data_args
-
-    def __len__(self):
-        return len(self.EgoGPTdata['video_clip'])-1
-        #(clip0,clip1) ... (clip13,clip14)
-
-    # @property
-    # def lengths(self):
-    #     length_list = []
-    #     for sample in self.EgoGPTdata:
-    #         img_tokens = 128 if 'image' in sample else 0
-    #         length_list.append(sum(len(conv['value'].split()) for conv in sample['conversations']) + img_tokens)
-    #     return length_list
-
-    @property
-    def modality_lengths(self):
-        length_list = []
-        for key in self.EgoGPTdata.keys():
-            cur_len=len(self.EgoGPTdata[key]['instruction'])+len(self.EgoGPTdata[key]['answer'])
-            length_list.append(cur_len)
-        return length_list
-
-    def preprocess_imu(self,imu_paths,sample_mode='interpolate'):
-        import torch.nn.functional as F
-        def _downsample(imu,sample_mode):
-            if sample_mode=="interpolate":
-                imu=F.interpolate(imu.unsqueeze(0).unsqueeze(0),(2000,6),mode="bilinear").squeeze(0).squeeze(0)
-            else:
-                indices = sorted(np.random.choice(imu.shape[0], size=2000, replace=False))
-                imu = imu[indices,: ]
-            return imu
-
-        imu=[]
-        totensor=lambda x:torch.tensor(x)
-        for imu_path in imu_paths:
-            imu_raw_data=totensor(np.load(imu_path)[:,1:])
-            imu_data=_downsample(imu_raw_data,sample_mode)
-            imu.append(imu_data)
-        imu=torch.stack(imu, dim=0)
-        imu=imu.permute(0,2,1)
-        imu=imu.to(torch.float32) #Convert to float32
-
-        return imu
-
-    def __getitem__(self, i) -> Dict[str, torch.Tensor]:
-        # TODO: define number of retries somewhere else
-        num_base_retries = 3
-        num_final_retries = 300
-
-        # try the current sample first
-        for attempt_idx in range(num_base_retries):
-            try:
-                sample = self._get_item(i)
-                return sample
-            except Exception as e:
-                # sleep 1s in case it is a cloud disk issue
-                print(f'[try #{attempt_idx}] Failed to fetch sample {i}. Exception:', e)
-                time.sleep(1)
-
-        # try other samples, in case it is file corruption issue
-        for attempt_idx in range(num_base_retries):
-            try:
-                sample_idx = random.choice(range(len(self)))
-                sample = self._get_item(sample_idx)
-                return sample
-            except Exception as e:
-                # no need to sleep
-                print(f'[try other #{attempt_idx}] Failed to fetch sample {sample_idx}. Exception:', e)
-                pass
-
-        # still fail, most likely to be path issue or cloud disk issue, retry the same sample for longer
-        for attempt_idx in range(num_final_retries):
-            try:
-                sample = self._get_item(i)
-                return sample
-            except Exception as e:
-                # sleep 1s in case it is a cloud disk issue
-                print(f'[final try #{attempt_idx}] Failed to fetch sample {i}. Exception:', e)
-                time.sleep(1)
-
-        # Finally raise exception on failing.
-        assert False, "Failed to fetch sample."
-
-    def preprocess_multimodal_egogptdata(self):
-        mm_data=""
-        mm_data+=DEFAULT_IMAGE_TOKEN+"\n"
-        mm_data+=DEFAULT_AUDIO_TOKEN+"\n"
-        mm_data+=DEFAULT_IMU_LEFT_TOKEN+"\n"
-        mm_data+=DEFAULT_AUDIO_TOKEN+"\n"
-        return mm_data
-
-    def preprocess_egogptdata(self,
-    sources: Sequence[str],
-    tokenizer: transformers.PreTrainedTokenizer,
-    has_image: bool = False,
-    prompt: str = None,
-    refine_prompt: bool = False,
-) -> Dict:
-        # conv = conversation_lib.default_conversation.copy()
-        # conv.system=''  #clear system message to follow otter-EAI
-        # roles = {"human": conv.roles[0], "gpt": conv.roles[1]}
-
-        # conversations = []
-        # conv.append_message(conv.roles[0], sources["instruction"])
-
-        # conv.append_message(conv.roles[1], sources["answer"])
-
-        # conversations.append(conv.get_prompt())
-
-        input_ids=[1]
-        # Tokenize conversations
-        for token in sources.split("\n"):
-            if token=="":
-                continue
-            if token==DEFAULT_IMAGE_TOKEN:
-                input_ids.append(IMAGE_TOKEN_INDEX)
-            if token==DEFAULT_IMU_LEFT_TOKEN:
-                input_ids.append(IMU_LEFT_TOKEN_INDEX)
-            if token==DEFAULT_IMU_RIGHT_TOKEN:
-                input_ids.append(IMU_RIGHT_TOKEN_INDEX)
-            if token==DEFAULT_AUDIO_TOKEN:
-                input_ids.append(AUDIO_TOKEN_INDEX)                                                
-            input_ids.append(13) #add "\n"
-
-        targets = input_ids.clone()
-
-
-        # Mask targets
-        sep = conv.sep + conv.roles[1] + ": "
-        for conversation, target in zip(conversations, targets):
-            total_len = int(target.ne(tokenizer.pad_token_id).sum())
-
-            rounds = conversation.split(conv.sep2)
-            cur_len = 1
-            target[:cur_len] = IGNORE_INDEX
-            for i, rou in enumerate(rounds):
-                if rou == "":
-                    break
-
-                parts = rou.split(sep)
-                if len(parts) != 2:
-                    break
-                parts[0] += sep
-
-                if has_image:
-                    round_len = len(tokenizer_image_token(rou, tokenizer))
-                    instruction_len = len(tokenizer_image_token(parts[0], tokenizer)) - 2
-                else:
-                    round_len = len(tokenizer(rou).input_ids)
-                    instruction_len = len(tokenizer(parts[0]).input_ids) - 2
-
-                if i != 0 and not tokenizer.legacy and IS_TOKENIZER_GREATER_THAN_0_14:
-                    round_len -= 1
-                    instruction_len -= 1
-
-                target[cur_len : cur_len + instruction_len] = IGNORE_INDEX
-
-                cur_len += round_len
-            target[cur_len:] = IGNORE_INDEX
-
-            if cur_len < tokenizer.model_max_length:
-                if cur_len != total_len:
-                    target[:] = IGNORE_INDEX
-                    print(
-                        f"WARNING: tokenization mismatch: {cur_len} vs. {total_len}."
-                        f" (ignored)"
-                    )
-
-        return dict(
-            input_ids=input_ids,
-            labels=targets,
-        )
-
-    def _get_item(self, i) -> Dict[str, torch.Tensor]:
-        data=self.EgoGPTdata['video_clip']
-        target_clip=f"clip{i}"
-        label_clip=f"clip{i+1}"
-
-        # device = "cuda" if torch.cuda.is_available() else "cpu"
-        video_path=[data[target_clip]["video"],data[label_clip]["video"]]
-        audio_path=[data[target_clip]["audio"],data[label_clip]["audio"]]
-        imu_left_path=[data[target_clip]["imu_left"],data[label_clip]["imu_left"]]
-        imu_right_path=[data[target_clip]["imu_right"],data[label_clip]["imu_right"]]
-
-        video_feat=egogpt_processor.load_and_transform_video_data(video_path)
-        audio_feat=egogpt_processor.load_and_transform_aria_audio_data(audio_path)
-        imu_left_feat=self.preprocess_imu(imu_left_path,sample_mode='interpolate')
-        imu_right_feat=self.preprocess_imu(imu_right_path,sample_mode='interpolate')
-
-        data_dict = dict(
-            video_input=video_feat[0],
-            video_label=video_feat[1],
-            audio_input=audio_feat[0],
-            audio_label=audio_feat[1],
-            imu_left_input=imu_left_feat[0],
-            imu_left_label=imu_left_feat[1],
-            imu_right_input=imu_right_feat[0],
-            imu_right_label=imu_right_feat[1]
-        ) 
-        #TODO add text token
-        # if 'prompt' in data_dict:
-        #     prompt = data_dict['prompt']
-        # else:
-        #     prompt = None
-        
-
-        # if isinstance(i, int):
-        #     data_dict = dict(input_ids=data_dict["input_ids"][0],
-        #                      labels=data_dict["labels"][0])
-
-        #     data_dict['image'] = image #add image sequence
-
-        # if prompt is not None:
-        #     data_dict['prompt'] = prompt
-
-        return data_dict    
-class MCDataset(LazySupervisedDataset):
+        return data_dict 
+class OctopusDataset(LazySupervisedDataset):
     """Dataset for supervised fine-tuning."""
 
     def __init__(self, data_path: str,
                  tokenizer: transformers.PreTrainedTokenizer,
                  data_args: DataArguments):
-        super(MCDataset, self).__init__(data_path,tokenizer,data_args)
-        # list_data_dict = json.load(open(data_path, "r"))
+        super(OctopusDataset, self).__init__(data_path,tokenizer,data_args)
 
-        # rank0_print("Formatting inputs...Skip in lazy mode")
-        # self.tokenizer = tokenizer
-        # self.EgoGPTdata = list_data_dict
-        # self.data_args = data_args
-
-    # def __len__(self):
-    #     return len(self.EgoGPTdata)
-
-    # @property
-    # def lengths(self):
-    #     length_list = []
-    #     for sample in self.EgoGPTdata:
-    #         img_tokens = 128 if 'image' in sample else 0
-    #         length_list.append(sum(len(conv['value'].split()) for conv in sample['conversations']) + img_tokens)
-    #     return length_list
 
     @property
     def modality_lengths(self):
@@ -1491,11 +1235,11 @@ class MCDataset(LazySupervisedDataset):
         # Finally raise exception on failing.
         assert False, "Failed to fetch sample."
 
-    def preprocess_multimodal_mcdata(self,data):
+    def preprocess_multimodal_data(self,data):
         data["instruction"]=DEFAULT_IMAGE_TOKEN+"\n"+data["instruction"]
         return data
 
-    def preprocess_mcdata(self,
+    def preprocess_data(self,
     sources: Sequence[str],
     tokenizer: transformers.PreTrainedTokenizer,
     has_image: bool = False,
@@ -1581,11 +1325,12 @@ class MCDataset(LazySupervisedDataset):
 
         key=key_candidate[i]
 
-        image_seq_path = self.list_data_dict[key]['image_ids']
-
+        image_seq_path = ["_".join(i.split("_")[-3:]) for i in self.list_data_dict[key]['image_ids']]
+        task_id="_".join(key.split("_")[:-2])
+        subtask_id="_".join(key.split("_")[-2:])
         image_seq=[]
-        for img in image_seq_path:
-            data=np.array(Image.open(img).convert("RGB"))
+        for img in image_seq_path: #TODO(choiszt) add whether need to shuffle the image sequence for ablation
+            data=np.array(Image.open(os.path.join(self.data_args.image_folder,task_id,subtask_id,f"{img}.png")).convert("RGB"))
 
             image_seq.append(data)
         video=np.stack(image_seq)
@@ -1595,7 +1340,7 @@ class MCDataset(LazySupervisedDataset):
 
         # image_tensors = torch.stack(image_tensors)  
         image = [(image, video[0].size,"video")]
-        sources = self.preprocess_multimodal_mcdata(self.list_data_dict[key])
+        sources = self.preprocess_multimodal_data(self.list_data_dict[key])
 
         # data_dict = preprocess(
         #     sources,
@@ -1603,7 +1348,7 @@ class MCDataset(LazySupervisedDataset):
         #     has_image=True,
         #     prompt=self.data_args.input_prompt,
         #     refine_prompt=self.data_args.refine_prompt)
-        data_dict = self.preprocess_mcdata(
+        data_dict = self.preprocess_data(
             sources,
             self.tokenizer,
             has_image=True,
@@ -1688,104 +1433,18 @@ class DataCollatorForSupervisedDataset(object):
 
         return batch
 
-@dataclass
-class DataCollatorForEgoGPT(object):
-    """Collate examples for supervised fine-tuning."""
-
-    tokenizer: transformers.PreTrainedTokenizer
-
-    def pad_sequence(self, input_ids, batch_first, padding_value):
-        if self.tokenizer.padding_side == "left":
-            input_ids = [torch.flip(_input_ids, [0]) for _input_ids in input_ids] 
-        input_ids = torch.nn.utils.rnn.pad_sequence(
-            input_ids,
-            batch_first=batch_first,
-            padding_value=padding_value)
-        if self.tokenizer.padding_side == "left":
-            input_ids = torch.flip(input_ids, [1])
-        return input_ids
-
-    def __call__(self, instances: Sequence[Dict]) -> Dict[str, torch.Tensor]:
-        
-        video_input, video_label, audio_input,\
-        audio_label, imu_left_input, imu_left_label, \
-        imu_right_input, imu_right_label = tuple([instance[key] for instance in instances]
-                                  for key in ('video_input', 'video_label', \
-                                              'audio_input', 'audio_label', \
-                                                'imu_left_input', 'imu_left_label',\
-                                                     'imu_right_input', 'imu_right_label'))
-        batch=dict(
-            video_input=video_input,
-            video_label=video_label,
-            audio_input=audio_input,
-            audio_label=audio_label,
-            imu_left_input=imu_left_input,
-            imu_left_label=imu_left_label,
-            imu_right_input=imu_right_input,
-            imu_right_label=imu_right_label
-        )
-        # # import pdb;pdb.set_trace()
-        # input_ids = [_input_ids[:self.tokenizer.model_max_length] for _input_ids in input_ids]
-        # labels = [_labels[:self.tokenizer.model_max_length] for _labels in labels]
-        # input_ids = self.pad_sequence(
-        #     input_ids,
-        #     batch_first=True,
-        #     padding_value=self.tokenizer.pad_token_id)
-        # labels = self.pad_sequence(labels,
-        #                            batch_first=True,
-        #                            padding_value=IGNORE_INDEX)
-        # batch = dict(
-        #     input_ids=input_ids,
-        #     labels=labels,
-        #     attention_mask=input_ids.ne(self.tokenizer.pad_token_id),
-        # )
-
-        # if 'image' in instances[0]:
-        #     # instances[1]['image'][0][0].shape
-        #     # torch.Size([5, 3, 224, 224])
-        #     images = [instance['image'] for instance in instances]
-        
-        #     batch['image_sizes'] = [im[1] for im_list in images for im in im_list]
-        #     batch['modalities'] = [im[2] for im_list in images for im in im_list]
-        #     images = [im[0] for im_list in images for im in im_list]
-        #     # import pdb;pdb.set_trace()
-            
-
-        #     if all(x is not None and x.shape == images[0].shape for x in images):
-        #         # Image: (N, P, C, H, W)
-        #         # Video: (N, F, C, H, W)
-        #         batch['images'] = torch.stack(images)
-        #     else:
-        #         batch['images'] = images
-
-        # # import pdb;pdb.set_trace()
-        # if 'prompt' in instances[0]:
-        #     batch['prompts'] = [instance['prompt'] for instance in instances]
-
-        return batch
-
 def make_supervised_data_module(tokenizer: transformers.PreTrainedTokenizer,
                                 data_args) -> Dict:
     """Make dataset and collator for supervised fine-tuning."""
-    train_dataset = MCDataset(tokenizer=tokenizer,
+    train_dataset = OctopusDataset(tokenizer=tokenizer,
                                 data_path=data_args.data_path,
                                 data_args=data_args)
+    train_dataset._get_item(2)
     data_collator = DataCollatorForSupervisedDataset(tokenizer=tokenizer)
     return dict(train_dataset=train_dataset,
                 eval_dataset=None,
                 data_collator=data_collator)
 
-def make_EgoGPT_data_module(tokenizer: transformers.PreTrainedTokenizer,
-                                data_args) -> Dict:
-    """Make dataset and collator for supervised fine-tuning."""
-    train_dataset = EgoGPTDataset(tokenizer=tokenizer,
-                                data_path=data_args.data_path,
-                                data_args=data_args)
-    data_collator = DataCollatorForEgoGPT(tokenizer=tokenizer)
-    # data_collator(instances=[train_dataset._get_item(1)])
-    return dict(train_dataset=train_dataset,
-                eval_dataset=None,
-                data_collator=data_collator)
 
 
 def train():
@@ -1864,8 +1523,6 @@ def train():
                 print(f"Overwriting config with {overwrite_config}")
                 for k, v in overwrite_config.items():
                     setattr(cfg_pretrained, k, v)
-                if "egogpt" in model_args.vision_tower.lower(): #(Choiszt) Set egogpt vision tower
-                    setattr(cfg_pretrained,"mm_vision_tower",model_args.vision_tower)
             # import pdb;pdb.set_trace()
             if transformers.__version__ == "4.31.0":
                 model = LlavaLlamaForCausalLM.from_pretrained(model_args.model_name_or_path, cache_dir=training_args.cache_dir, config=cfg_pretrained, torch_dtype=(torch.bfloat16 if training_args.bf16 else None), **bnb_model_from_pretrained_args)
@@ -1876,13 +1533,7 @@ def train():
                     model = LlavaLlamaForCausalLM.from_pretrained(
                         model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation="flash_attention_2", torch_dtype=(torch.bfloat16 if training_args.bf16 else None), **bnb_model_from_pretrained_args
                     )
-                elif "egogpt" in model_args.vision_tower.lower():
-                    model = EgoGPTLlama.from_pretrained(
-                        model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation="flash_attention_2", config=cfg_pretrained, torch_dtype=(torch.bfloat16 if training_args.bf16 else None), **bnb_model_from_pretrained_args
-                    )
-                    # sample=torch.load("1.pt")
-                    # model(**sample)
-                else: #EgoGPT go with this loop
+                else: 
                     model = LlavaLlamaForCausalLM.from_pretrained(
                         model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation="flash_attention_2", config=cfg_pretrained, torch_dtype=(torch.bfloat16 if training_args.bf16 else None), **bnb_model_from_pretrained_args
                     )
@@ -1969,120 +1620,61 @@ def train():
         else:
             conversation_lib.default_conversation = conversation_lib.conv_templates["vicuna_v1"]
 
-    if "egogpt" in model_args.vision_tower.lower():
-        if model_args.vision_tower is not None:
-            model.get_model().initialize_vision_modules(
-                model_args=model_args,
-                fsdp=training_args.fsdp
-            )
-            
-            vision_tower = model.get_vision_tower()
-            vision_tower.load_model()
-            print("load imagebind model...")
-            vision_tower.vision_tower.to(torch.float32) #Pretrained Imagebind only suit for float32
+    if model_args.vision_tower is not None:
+        model.get_model().initialize_vision_modules(
+            model_args=model_args,
+            fsdp=training_args.fsdp
+        )
+        
+        vision_tower = model.get_vision_tower()
+        vision_tower.to(dtype=torch.bfloat16 if training_args.bf16 else torch.float16, device=training_args.device)
 
-            # data_args.image_processor = vision_tower.image_processor
-            data_args.is_multimodal = True
+        data_args.image_processor = vision_tower.image_processor
+        data_args.is_multimodal = True
 
-            model.config.image_aspect_ratio = data_args.image_aspect_ratio
-            if data_args.image_grid_pinpoints is not None:
-                data_args.image_grid_pinpoints = ast.literal_eval(data_args.image_grid_pinpoints)
-            model.config.image_grid_pinpoints = data_args.image_grid_pinpoints
-            model.config.image_crop_resolution = data_args.image_crop_resolution
-            model.config.image_split_resolution = data_args.image_split_resolution
-            model.config.tokenizer_padding_side = tokenizer.padding_side
-            model.config.tokenizer_model_max_length = tokenizer.model_max_length
+        model.config.image_aspect_ratio = data_args.image_aspect_ratio
+        if data_args.image_grid_pinpoints is not None:
+            data_args.image_grid_pinpoints = ast.literal_eval(data_args.image_grid_pinpoints)
+        model.config.image_grid_pinpoints = data_args.image_grid_pinpoints
+        model.config.image_crop_resolution = data_args.image_crop_resolution
+        model.config.image_split_resolution = data_args.image_split_resolution
+        model.config.tokenizer_padding_side = tokenizer.padding_side
+        model.config.tokenizer_model_max_length = tokenizer.model_max_length
 
-            model.config.tune_mm_mlp_adapter = training_args.tune_mm_mlp_adapter = model_args.tune_mm_mlp_adapter
-            model.config.tune_mm_vision_resampler = training_args.tune_mm_vision_resampler = model_args.tune_mm_vision_resampler
-            if model_args.tune_mm_mlp_adapter or model_args.tune_mm_vision_resampler:
-                model.requires_grad_(False)
-            if model_args.tune_mm_mlp_adapter:
-                for p in model.get_model().mm_projector.parameters():
-                    p.requires_grad = True
-            if model_args.tune_mm_vision_resampler:
-                for p in model.get_model().vision_resampler.parameters():
-                    p.requires_grad = True
+        model.config.tune_mm_mlp_adapter = training_args.tune_mm_mlp_adapter = model_args.tune_mm_mlp_adapter
+        model.config.tune_mm_vision_resampler = training_args.tune_mm_vision_resampler = model_args.tune_mm_vision_resampler
+        if model_args.tune_mm_mlp_adapter or model_args.tune_mm_vision_resampler:
+            model.requires_grad_(False)
+        if model_args.tune_mm_mlp_adapter:
+            for p in model.get_model().mm_projector.parameters():
+                p.requires_grad = True
+        if model_args.tune_mm_vision_resampler:
+            for p in model.get_model().vision_resampler.parameters():
+                p.requires_grad = True
 
-            model.config.freeze_mm_mlp_adapter = training_args.freeze_mm_mlp_adapter
-            if training_args.freeze_mm_mlp_adapter:
-                for p in model.get_model().mm_projector.parameters():
-                    p.requires_grad = False
+        model.config.freeze_mm_mlp_adapter = training_args.freeze_mm_mlp_adapter
+        if training_args.freeze_mm_mlp_adapter:
+            for p in model.get_model().mm_projector.parameters():
+                p.requires_grad = False
 
-            model.config.freeze_mm_vision_resampler = training_args.freeze_mm_vision_resampler
-            if training_args.freeze_mm_vision_resampler:
-                for p in model.get_model().vision_resampler.parameters():
-                    p.requires_grad = False
+        model.config.freeze_mm_vision_resampler = training_args.freeze_mm_vision_resampler
+        if training_args.freeze_mm_vision_resampler:
+            for p in model.get_model().vision_resampler.parameters():
+                p.requires_grad = False
 
-            model.config.unfreeze_mm_vision_tower = model_args.unfreeze_mm_vision_tower
-            if model_args.unfreeze_mm_vision_tower:
-                vision_tower.requires_grad_(True)
+        model.config.unfreeze_mm_vision_tower = model_args.unfreeze_mm_vision_tower
+        if model_args.unfreeze_mm_vision_tower:
+            vision_tower.requires_grad_(True)
 
-            if training_args.bits in [4, 8]:
-                model.get_model().mm_projector.to(dtype=compute_dtype, device=training_args.device)
+        if training_args.bits in [4, 8]:
+            model.get_model().mm_projector.to(dtype=compute_dtype, device=training_args.device)
 
-            model.config.mm_use_im_start_end = data_args.mm_use_im_start_end = model_args.mm_use_im_start_end
-            model.config.mm_projector_lr = training_args.mm_projector_lr
-            model.config.mm_vision_tower_lr = training_args.mm_vision_tower_lr
-            training_args.use_im_start_end = model_args.mm_use_im_start_end
-            model.config.mm_use_im_patch_token = model_args.mm_use_im_patch_token
-            model.initialize_vision_tokenizer(model_args, tokenizer=tokenizer)
-    else:
-        if model_args.vision_tower is not None:
-            model.get_model().initialize_vision_modules(
-                model_args=model_args,
-                fsdp=training_args.fsdp
-            )
-            
-            vision_tower = model.get_vision_tower()
-            vision_tower.to(dtype=torch.bfloat16 if training_args.bf16 else torch.float16, device=training_args.device)
-
-            data_args.image_processor = vision_tower.image_processor
-            data_args.is_multimodal = True
-
-            model.config.image_aspect_ratio = data_args.image_aspect_ratio
-            if data_args.image_grid_pinpoints is not None:
-                data_args.image_grid_pinpoints = ast.literal_eval(data_args.image_grid_pinpoints)
-            model.config.image_grid_pinpoints = data_args.image_grid_pinpoints
-            model.config.image_crop_resolution = data_args.image_crop_resolution
-            model.config.image_split_resolution = data_args.image_split_resolution
-            model.config.tokenizer_padding_side = tokenizer.padding_side
-            model.config.tokenizer_model_max_length = tokenizer.model_max_length
-
-            model.config.tune_mm_mlp_adapter = training_args.tune_mm_mlp_adapter = model_args.tune_mm_mlp_adapter
-            model.config.tune_mm_vision_resampler = training_args.tune_mm_vision_resampler = model_args.tune_mm_vision_resampler
-            if model_args.tune_mm_mlp_adapter or model_args.tune_mm_vision_resampler:
-                model.requires_grad_(False)
-            if model_args.tune_mm_mlp_adapter:
-                for p in model.get_model().mm_projector.parameters():
-                    p.requires_grad = True
-            if model_args.tune_mm_vision_resampler:
-                for p in model.get_model().vision_resampler.parameters():
-                    p.requires_grad = True
-
-            model.config.freeze_mm_mlp_adapter = training_args.freeze_mm_mlp_adapter
-            if training_args.freeze_mm_mlp_adapter:
-                for p in model.get_model().mm_projector.parameters():
-                    p.requires_grad = False
-
-            model.config.freeze_mm_vision_resampler = training_args.freeze_mm_vision_resampler
-            if training_args.freeze_mm_vision_resampler:
-                for p in model.get_model().vision_resampler.parameters():
-                    p.requires_grad = False
-
-            model.config.unfreeze_mm_vision_tower = model_args.unfreeze_mm_vision_tower
-            if model_args.unfreeze_mm_vision_tower:
-                vision_tower.requires_grad_(True)
-
-            if training_args.bits in [4, 8]:
-                model.get_model().mm_projector.to(dtype=compute_dtype, device=training_args.device)
-
-            model.config.mm_use_im_start_end = data_args.mm_use_im_start_end = model_args.mm_use_im_start_end
-            model.config.mm_projector_lr = training_args.mm_projector_lr
-            model.config.mm_vision_tower_lr = training_args.mm_vision_tower_lr
-            training_args.use_im_start_end = model_args.mm_use_im_start_end
-            model.config.mm_use_im_patch_token = model_args.mm_use_im_patch_token
-            model.initialize_vision_tokenizer(model_args, tokenizer=tokenizer)
+        model.config.mm_use_im_start_end = data_args.mm_use_im_start_end = model_args.mm_use_im_start_end
+        model.config.mm_projector_lr = training_args.mm_projector_lr
+        model.config.mm_vision_tower_lr = training_args.mm_vision_tower_lr
+        training_args.use_im_start_end = model_args.mm_use_im_start_end
+        model.config.mm_use_im_patch_token = model_args.mm_use_im_patch_token
+        model.initialize_vision_tokenizer(model_args, tokenizer=tokenizer)
 
     if training_args.bits in [4, 8]:
         from peft.tuners.lora import LoraLayer
@@ -2097,15 +1689,11 @@ def train():
                     if training_args.bf16 and module.weight.dtype == torch.float32:
                         module = module.to(torch.bfloat16)
 
-    if "egogpt" in model_args.vision_tower.lower():
+ 
 
-        data_module = make_EgoGPT_data_module(tokenizer=tokenizer,
-                                                data_args=data_args)        
-
-    else:
-        data_module = make_supervised_data_module(tokenizer=tokenizer,
+    data_module = make_supervised_data_module(tokenizer=tokenizer,
                                                 data_args=data_args)
-    trainer = EgoGPT_trainer(model=model,
+    trainer = LLaVATrainer(model=model,
                     tokenizer=tokenizer,
                     args=training_args,
                     **data_module)
