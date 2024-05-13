@@ -52,7 +52,7 @@ objects: []
 
 task:
   type: BehaviorTask
-  activity_name: fry_pot_stickers # example task
+  activity_name: fry_pot_stickers # example task 
   activity_definition_id: 0
   activity_instance_id: 0
   predefined_problem: null
