@@ -1,6 +1,0 @@
-process:
-  sub_num: 15
-  log_path: "/PATH/TO/LOG/JSON"
-  data_path: "/PATH/TO/DATA/DIR"
-  task_path: "octogibson/config/Octogibson_task.json"
-  config_path: "octogibson/config/Octogibson.yaml"
