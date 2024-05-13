@@ -165,7 +165,8 @@ cython_debug/
 
 data/*
 !data/.gitkeep
-octopus/octopus_llava/weight/
+octopus/octopus_llava/weight/*
+octopus/octopus_llava/llava.egg-info
 *.safetensors
 scripts/*
 !scripts/zero2.json
