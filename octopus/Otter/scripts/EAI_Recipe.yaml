@@ -1,0 +1,9 @@
+VIDEO_TEXT:
+  OctoGibson:
+    mimicit_path: ../../data/octogibson/OctoGibson.json
+    images_path: ../../data/octogibson/OctoGibson_images_single.parquet/part.0.parquet
+    num_samples: -1
+  # M3IT_MSRVTTQA:
+  #   mimicit_path: /home/luodian/azure_storage/otter/mimicit/M3IT/M3IT_MSRVTTQA_instructions.json
+  #   images_path: /home/luodian/azure_storage/otter/mimicit/Parquets/M3IT_MSRVTTQA.parquet
+  #   num_samples: -1
