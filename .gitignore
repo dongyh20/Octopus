@@ -165,4 +165,5 @@ cython_debug/
 #.idea/
 
 data/*
+!data/.gitkeep
 octopus/octopus_llava/weight/
