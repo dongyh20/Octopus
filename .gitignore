@@ -173,3 +173,9 @@ octopus/octopus_llava/scripts/*
 !octopus/octopus_llava/scripts/zero3.json
 !octopus/octopus_llava/scripts/zero3_offload.json
 !octopus/octopus_llava/scripts/finetune_OctoGibson.sh
+work_dirs/
+wandb/
+*.zip
+*.jpg
+octopus/octopus_llava/weight/
+results/

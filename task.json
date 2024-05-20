@@ -1,0 +1,191 @@
+[
+    {
+        "group": "I1. Cooking",
+        "type": "reason",
+        "BDDL_Task": "cook_carrots",
+        "EVLM_Task": "restore_carrot_with_saucepot",
+        "Detailed_Task": "put_carrot_into_saucepot",
+        "Target States": "[carrot.n.03_1, inside, saucepot.n.01_1, 1]",
+        "Environment": "Merom_1_int"
+    },
+    {
+        "group": "I1. Cooking",
+        "type": "follow",
+        "BDDL_Task": "cook_carrots",
+        "EVLM_Task": "put_carrot_into_saucepot",
+        "Detailed_Task": "put_carrot_into_saucepot",
+        "Target States": "[carrot.n.03_1, inside, saucepot.n.01_1, 1]",
+        "Environment": "Merom_1_int"
+    },
+    {
+        "group": "I1. Cooking",
+        "type": "follow",
+        "BDDL_Task": "thawing_frozen_food",
+        "EVLM_Task": "thaw_a_olive",
+        "Detailed_Task": "unfreeze_the_olive",
+        "Target States": "[olive.n.04_1,freezable,0]",
+        "Environment": "Ihlen_1_int"
+    },
+    {
+        "group": "I2. Basic Cleaning",
+        "type": "follow",
+        "BDDL_Task": "cleaning_bathrooms",
+        "EVLM_Task": "open_the_bucket",
+        "Detailed_Task": "open_the_bucket",
+        "Target States": "[bucket.n.01_1,openable, 1]",
+        "Environment": "Ihlen_1_int"
+    },
+    {
+        "group": "I3. Setting Up and Assembling",
+        "type": "follow",
+        "BDDL_Task": "installing_a_fax_machine",
+        "EVLM_Task": "turn_on_a_fax_machine",
+        "Detailed_Task": "toggle_on_a_fax_machine",
+        "Target States": "[facsimile.n.02_1, toggleable, 1]",
+        "Environment": "Beechwood_0_int"
+    },
+    {
+        "group": "I3. Setting Up and Assembling",
+        "type": "follow",
+        "BDDL_Task": "installing_alarms",
+        "EVLM_Task": "turn_on_an_alarm",
+        "Detailed_Task": "turn_on_an_alarm",
+        "Target States": "[alarm.n.02_1, toggleable, 1]",
+        "Environment": "Ihlen_0_int"
+    },
+    {
+        "group": "I4. Packing and Storing",
+        "type": "follow",
+        "BDDL_Task": "putting_shopping_away",
+        "EVLM_Task": "open_the_refrigerator",
+        "Detailed_Task": "open_the_refrigerator",
+        "Target States": "[electric_refrigerator.n.01_1, openable, 1]",
+        "Environment": "Benevolence_1_int"
+    },
+    {
+        "group": "I4. Packing and Storing",
+        "type": "follow",
+        "BDDL_Task": "prepare_an_emergency_school_kit",
+        "EVLM_Task": "pack_a_notbook",
+        "Detailed_Task": "open_the_backpack",
+        "Target States": "[backpack.n.01_1, openable, 1]",
+        "Environment": "Benevolence_2_int"
+    },
+    {
+        "group": "I5. Recycling and Waste Management",
+        "type": "reason",
+        "BDDL_Task": "recycling_office_papers",
+        "EVLM_Task": "discard_document",
+        "Detailed_Task": "put_document_into_the_bin",
+        "Target States": "[legal_document.n.01_1, inside, recycling_bin.n.01_1,1]",
+        "Environment": "Beechwood_0_int"
+    },
+    {
+        "group": "I5. Recycling and Waste Management",
+        "type": "reason",
+        "BDDL_Task": "recycling_glass_bottles",
+        "EVLM_Task": "find_a_carboy",
+        "Detailed_Task": "open_the_cabinet",
+        "Target States": "[cabinet.n.01_1, openable, 1]",
+        "Environment": "Beechwood_0_int"
+    },
+    {
+        "group": "I5. Recycling and Waste Management",
+        "type": "reason",
+        "BDDL_Task": "dispose_of_a_pizza_box",
+        "EVLM_Task": "find_pizza_box",
+        "Detailed_Task": "open_the_fridge",
+        "Target States": "[electric_refrigerator.n.01_1, openable, 1]",
+        "Environment": "Benevolence_1_int"
+    },
+    {
+        "group": "I5. Recycling and Waste Management",
+        "type": "follow",
+        "BDDL_Task": "recycling_office_papers",
+        "EVLM_Task": "put_document_into_the_bin",
+        "Detailed_Task": "put_document_into_the_bin",
+        "Target States": "[legal_document.n.01_1, inside, recycling_bin.n.01_1,1]",
+        "Environment": "Beechwood_0_int"
+    },
+    {
+        "group": "I5. Recycling and Waste Management",
+        "type": "follow",
+        "BDDL_Task": "recycling_glass_bottles",
+        "EVLM_Task": "open_the_cabinet",
+        "Detailed_Task": "open_the_cabinet",
+        "Target States": "[cabinet.n.01_1, openable, 1]",
+        "Environment": "Beechwood_0_int"
+    },
+    {
+        "group": "I5. Recycling and Waste Management",
+        "type": "follow",
+        "BDDL_Task": "dispose_of_a_pizza_box",
+        "EVLM_Task": "open_the_fridge",
+        "Detailed_Task": "open_the_fridge",
+        "Target States": "[electric_refrigerator.n.01_1, openable, 1]",
+        "Environment": "Benevolence_1_int"
+    },
+    {
+        "group": "I6. Shopping Activities",
+        "type": "follow",
+        "BDDL_Task": "buy_dog_food",
+        "EVLM_Task": "put_money_on_checkout_desk",
+        "Detailed_Task": "put_money_on_checkout_desk",
+        "Target States": "[money.n.01_1, ontop, checkout.n.03_1, 1]",
+        "Environment": "grocery_store_cafe"
+    },
+    {
+        "group": "I6. Shopping Activities",
+        "type": "follow",
+        "BDDL_Task": "buying_everyday_consumer_goods",
+        "EVLM_Task": "put_pineapple_in_sack",
+        "Detailed_Task": "put_pineapple_in_sack",
+        "Target States": "[pineapple.n.01_1, inside, sack.n.02_1, 1]",
+        "Environment": "grocery_store_cafe"
+    },
+    {
+        "group": "I6. Shopping Activities",
+        "type": "follow",
+        "BDDL_Task": "buy_good_chocolate",
+        "EVLM_Task": "put_box_of_chocolates_in_shopping_cart",
+        "Detailed_Task": "put_box_of_chocolates_in_shopping_cart",
+        "Target States": "[box__of__chocolates.n.01_1, inside, shopping_cart.n.01_1, 1]",
+        "Environment": "grocery_store_cafe"
+    },
+    {
+        "group": "O2. Basic Cleaning",
+        "type": "reason",
+        "BDDL_Task": "sweeping_outside_entrance",
+        "EVLM_Task": "sweeping_leaf",
+        "Detailed_Task": "put_a_leaf_in_the_ashcan",
+        "Target States": "[entire_leaf.n.01_1,inside,ashcan.n.01_1,1]",
+        "Environment": "house_double_floor_lower"
+    },
+    {
+        "group": "O2. Basic Cleaning",
+        "type": "follow",
+        "BDDL_Task": "sweeping_outside_entrance",
+        "EVLM_Task": "put_a_leaf_in_the_ashcan",
+        "Detailed_Task": "put_a_leaf_in_the_ashcan",
+        "Target States": "[entire_leaf.n.01_1,inside,ashcan.n.01_1,1]",
+        "Environment": "house_double_floor_lower"
+    },
+    {
+        "group": "O5. Recycling and Waste Management",
+        "type": "follow",
+        "BDDL_Task": "picking_up_litter",
+        "EVLM_Task": "put_a_plastic_bag_into_bin",
+        "Detailed_Task": "put_a_plastic_bag_into_bin",
+        "Target States": "[plastic_bag.n.01_1,inside,recycling_bin.n.01_1,1]",
+        "Environment": "Pomaria_0_garden"
+    },
+    {
+        "group": "O5. Recycling and Waste Management",
+        "type": "reason",
+        "BDDL_Task": "picking_up_litter",
+        "EVLM_Task": "discard_a_plastic_bag",
+        "Detailed_Task": "put_a_plastic_bag_into_bin",
+        "Target States": "[plastic_bag.n.01_1,inside,recycling_bin.n.01_1,1]",
+        "Environment": "Pomaria_0_garden"
+    }
+]

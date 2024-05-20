@@ -878,7 +878,8 @@ class LazySupervisedDataset(Dataset):
 
         rank0_print("Formatting inputs...Skip in lazy mode")
         self.tokenizer = tokenizer
-        self.list_data_dict = list_data_dict['data']
+        # self.list_data_dict = list_data_dict['data'] #for specified for octogibson data
+        self.list_data_dict = list_data_dict
         self.data_args = data_args
 
     def __len__(self):
@@ -1329,7 +1330,7 @@ class OctopusDataset(LazySupervisedDataset):
         task_id="_".join(key.split("_")[:-2])
         subtask_id="_".join(key.split("_")[-2:])
         image_seq=[]
-        for img in image_seq_path: #TODO(choiszt) add whether need to shuffle the image sequence for ablation
+        for img in sorted(image_seq_path): #TODO(choiszt) add whether need to shuffle the image sequence for ablation
             data=np.array(Image.open(os.path.join(self.data_args.image_folder,task_id,subtask_id,f"{img}.png")).convert("RGB"))
 
             image_seq.append(data)
@@ -1349,6 +1350,440 @@ class OctopusDataset(LazySupervisedDataset):
         #     prompt=self.data_args.input_prompt,
         #     refine_prompt=self.data_args.refine_prompt)
         data_dict = self.preprocess_data(
+            sources,
+            self.tokenizer,
+            has_image=True,
+            prompt=self.data_args.input_prompt,
+            refine_prompt=self.data_args.refine_prompt)        
+
+        if 'prompt' in data_dict:
+            prompt = data_dict['prompt']
+        else:
+            prompt = None
+        
+
+        if isinstance(i, int):
+            data_dict = dict(input_ids=data_dict["input_ids"][0],
+                             labels=data_dict["labels"][0])
+
+            data_dict['image'] = image #add image sequence
+
+        if prompt is not None:
+            data_dict['prompt'] = prompt
+
+        return data_dict
+
+class OctoGTADataset(LazySupervisedDataset):
+    """Dataset for supervised fine-tuning."""
+
+    def __init__(self, data_path: str,
+                 tokenizer: transformers.PreTrainedTokenizer,
+                 data_args: DataArguments):
+        super(OctoGTADataset, self).__init__(data_path,tokenizer,data_args)
+
+
+    @property
+    def modality_lengths(self):
+        length_list = []
+        for key in self.list_data_dict.keys():
+            cur_len=len(self.list_data_dict[key]['instruction'])+len(self.list_data_dict[key]['answer'])
+            length_list.append(cur_len)
+        return length_list
+
+    def __getitem__(self, i) -> Dict[str, torch.Tensor]:
+        # TODO: define number of retries somewhere else
+        num_base_retries = 3
+        num_final_retries = 300
+
+        # try the current sample first
+        for attempt_idx in range(num_base_retries):
+            try:
+                sample = self._get_item(i)
+                return sample
+            except Exception as e:
+                # sleep 1s in case it is a cloud disk issue
+                print(f'[try #{attempt_idx}] Failed to fetch sample {i}. Exception:', e)
+                time.sleep(1)
+
+        # try other samples, in case it is file corruption issue
+        for attempt_idx in range(num_base_retries):
+            try:
+                sample_idx = random.choice(range(len(self)))
+                sample = self._get_item(sample_idx)
+                return sample
+            except Exception as e:
+                # no need to sleep
+                print(f'[try other #{attempt_idx}] Failed to fetch sample {sample_idx}. Exception:', e)
+                pass
+
+        # still fail, most likely to be path issue or cloud disk issue, retry the same sample for longer
+        for attempt_idx in range(num_final_retries):
+            try:
+                sample = self._get_item(i)
+                return sample
+            except Exception as e:
+                # sleep 1s in case it is a cloud disk issue
+                print(f'[final try #{attempt_idx}] Failed to fetch sample {i}. Exception:', e)
+                time.sleep(1)
+
+        # Finally raise exception on failing.
+        assert False, "Failed to fetch sample."
+
+    def preprocess_multimodal_data(self,data):
+        data["instruction"]=DEFAULT_IMAGE_TOKEN+"\n"+data["instruction"]
+        return data
+
+    def preprocess_data(self,
+    sources: Sequence[str],
+    tokenizer: transformers.PreTrainedTokenizer,
+    has_image: bool = False,
+    prompt: str = None,
+    refine_prompt: bool = False,
+) -> Dict:
+        conv = conversation_lib.default_conversation.copy()
+        conv.system=''  #clear system message to follow otter-EAI
+        roles = {"human": conv.roles[0], "gpt": conv.roles[1]}
+
+        conversations = []
+        conv.append_message(conv.roles[0], sources["instruction"])
+
+        conv.append_message(conv.roles[1], sources["answer"])
+
+        conversations.append(conv.get_prompt())
+
+        # Tokenize conversations
+
+        if has_image:
+            input_ids = torch.stack([tokenizer_image_token(prompt, tokenizer, return_tensors='pt') for prompt in conversations], dim=0)
+        else:
+            input_ids = tokenizer(
+                conversations,
+                return_tensors="pt",
+                padding="longest",
+                max_length=tokenizer.model_max_length,
+                truncation=True,
+            ).input_ids
+
+        targets = input_ids.clone()
+
+        assert conv.sep_style == conversation_lib.SeparatorStyle.TWO
+
+        # Mask targets
+        sep = conv.sep + conv.roles[1] + ": "
+        for conversation, target in zip(conversations, targets):
+            total_len = int(target.ne(tokenizer.pad_token_id).sum())
+
+            rounds = conversation.split(conv.sep2)
+            cur_len = 1
+            target[:cur_len] = IGNORE_INDEX
+            for i, rou in enumerate(rounds):
+                if rou == "":
+                    break
+
+                parts = rou.split(sep)
+                if len(parts) != 2:
+                    break
+                parts[0] += sep
+
+                if has_image:
+                    round_len = len(tokenizer_image_token(rou, tokenizer))
+                    instruction_len = len(tokenizer_image_token(parts[0], tokenizer)) - 2
+                else:
+                    round_len = len(tokenizer(rou).input_ids)
+                    instruction_len = len(tokenizer(parts[0]).input_ids) - 2
+
+                if i != 0 and not tokenizer.legacy and IS_TOKENIZER_GREATER_THAN_0_14:
+                    round_len -= 1
+                    instruction_len -= 1
+
+                target[cur_len : cur_len + instruction_len] = IGNORE_INDEX
+
+                cur_len += round_len
+            target[cur_len:] = IGNORE_INDEX
+
+            if cur_len < tokenizer.model_max_length:
+                if cur_len != total_len:
+                    target[:] = IGNORE_INDEX
+                    print(
+                        f"WARNING: tokenization mismatch: {cur_len} vs. {total_len}."
+                        f" (ignored)"
+                    )
+
+        return dict(
+            input_ids=input_ids,
+            labels=targets,
+        )
+
+    def _get_item(self, i) -> Dict[str, torch.Tensor]:
+        key_candidate=list(self.list_data_dict.keys())
+
+        key=key_candidate[i]
+
+        image_seq_path = [i for i in self.list_data_dict[key]['image_ids']]
+        task_id="_".join(key.split("_")[:-2])
+        subtask_id="_".join(key.split("_")[-2:])
+        image_seq=[]
+        for img in sorted(image_seq_path): #TODO(choiszt) add whether need to shuffle the image sequence for ablation
+            data=np.array(Image.open(img).convert("RGB"))
+
+            image_seq.append(data)
+        video=np.stack(image_seq)
+
+        processor = self.data_args.image_processor
+        image = processor.preprocess(video, return_tensors='pt')['pixel_values']
+
+        # image_tensors = torch.stack(image_tensors)  
+        image = [(image, video[0].size,"video")]
+        sources = self.preprocess_multimodal_data(self.list_data_dict[key])
+
+        # data_dict = preprocess(
+        #     sources,
+        #     self.tokenizer,
+        #     has_image=True,
+        #     prompt=self.data_args.input_prompt,
+        #     refine_prompt=self.data_args.refine_prompt)
+        data_dict = self.preprocess_data(
+            sources,
+            self.tokenizer,
+            has_image=True,
+            prompt=self.data_args.input_prompt,
+            refine_prompt=self.data_args.refine_prompt)        
+
+        if 'prompt' in data_dict:
+            prompt = data_dict['prompt']
+        else:
+            prompt = None
+        
+
+        if isinstance(i, int):
+            data_dict = dict(input_ids=data_dict["input_ids"][0],
+                             labels=data_dict["labels"][0])
+
+            data_dict['image'] = image #add image sequence
+
+        if prompt is not None:
+            data_dict['prompt'] = prompt
+
+        return data_dict
+
+class MCDataset(LazySupervisedDataset):
+    """Dataset for supervised fine-tuning."""
+
+    def __init__(self, data_path: str,
+                 tokenizer: transformers.PreTrainedTokenizer,
+                 data_args: DataArguments):
+        super(MCDataset, self).__init__(data_path,tokenizer,data_args)
+        # list_data_dict = json.load(open(data_path, "r"))
+
+        # rank0_print("Formatting inputs...Skip in lazy mode")
+        # self.tokenizer = tokenizer
+        # self.EgoGPTdata = list_data_dict
+        # self.data_args = data_args
+
+    # def __len__(self):
+    #     return len(self.EgoGPTdata)
+
+    # @property
+    # def lengths(self):
+    #     length_list = []
+    #     for sample in self.EgoGPTdata:
+    #         img_tokens = 128 if 'image' in sample else 0
+    #         length_list.append(sum(len(conv['value'].split()) for conv in sample['conversations']) + img_tokens)
+    #     return length_list
+
+    @property
+    def modality_lengths(self):
+        length_list = []
+        for key in self.list_data_dict.keys():
+            cur_len=len(self.list_data_dict[key]['instruction'])+len(self.list_data_dict[key]['answer'])
+            length_list.append(cur_len)
+        return length_list
+
+    # def process_image(self, image_file):
+    #     image_folder = self.data_args.image_folder
+    #     processor = self.data_args.image_processor
+    #     if not isinstance(image_file, np.ndarray):
+    #         image = Image.open(os.path.join(image_folder, image_file)).convert('RGB')
+    #     else:
+    #         image = Image.fromarray(image_file).convert('RGB')
+    #     image_size = image.size
+    #     if self.data_args.image_aspect_ratio == 'highres':
+    #         image = process_highres_image(image, self.data_args.image_processor, self.data_args.image_grid_pinpoints)
+    #     elif self.data_args.image_aspect_ratio == 'anyres':
+    #         image = process_anyres_image(image, self.data_args.image_processor, self.data_args.image_grid_pinpoints)
+    #     elif self.data_args.image_aspect_ratio == 'crop_split':
+    #         image = process_highres_image_crop_split(image, self.data_args)
+    #     elif self.data_args.image_aspect_ratio == 'pad':
+    #         def expand2square(pil_img, background_color):
+    #             width, height = pil_img.size
+    #             if width == height:
+    #                 return pil_img
+    #             elif width > height:
+    #                 result = Image.new(pil_img.mode, (width, width), background_color)
+    #                 result.paste(pil_img, (0, (width - height) // 2))
+    #                 return result
+    #             else:
+    #                 result = Image.new(pil_img.mode, (height, height), background_color)
+    #                 result.paste(pil_img, ((height - width) // 2, 0))
+    #                 return result
+    #         image = expand2square(image, tuple(int(x*255) for x in processor.image_mean))
+    #         image = processor.preprocess(image, return_tensors='pt')['pixel_values'][0]
+    #     else:
+    #         image = processor.preprocess(image, return_tensors='pt')['pixel_values'][0]
+    #     return image, image_size,"image"
+
+    def __getitem__(self, i) -> Dict[str, torch.Tensor]:
+        # TODO: define number of retries somewhere else
+        num_base_retries = 3
+        num_final_retries = 300
+
+        # try the current sample first
+        for attempt_idx in range(num_base_retries):
+            try:
+                sample = self._get_item(i)
+                return sample
+            except Exception as e:
+                # sleep 1s in case it is a cloud disk issue
+                print(f'[try #{attempt_idx}] Failed to fetch sample {i}. Exception:', e)
+                time.sleep(1)
+
+        # try other samples, in case it is file corruption issue
+        for attempt_idx in range(num_base_retries):
+            try:
+                sample_idx = random.choice(range(len(self)))
+                sample = self._get_item(sample_idx)
+                return sample
+            except Exception as e:
+                # no need to sleep
+                print(f'[try other #{attempt_idx}] Failed to fetch sample {sample_idx}. Exception:', e)
+                pass
+
+        # still fail, most likely to be path issue or cloud disk issue, retry the same sample for longer
+        for attempt_idx in range(num_final_retries):
+            try:
+                sample = self._get_item(i)
+                return sample
+            except Exception as e:
+                # sleep 1s in case it is a cloud disk issue
+                print(f'[final try #{attempt_idx}] Failed to fetch sample {i}. Exception:', e)
+                time.sleep(1)
+
+        # Finally raise exception on failing.
+        assert False, "Failed to fetch sample."
+
+    def preprocess_multimodal_mcdata(self,data):
+        data["instruction"]=DEFAULT_IMAGE_TOKEN+"\n"+data["instruction"]
+        return data
+
+    def preprocess_mcdata(self,
+    sources: Sequence[str],
+    tokenizer: transformers.PreTrainedTokenizer,
+    has_image: bool = False,
+    prompt: str = None,
+    refine_prompt: bool = False,
+) -> Dict:
+        conv = conversation_lib.default_conversation.copy()
+        conv.system=''  #clear system message to follow otter-EAI
+        roles = {"human": conv.roles[0], "gpt": conv.roles[1]}
+
+        conversations = []
+        conv.append_message(conv.roles[0], sources["instruction"])
+
+        conv.append_message(conv.roles[1], sources["answer"])
+
+        conversations.append(conv.get_prompt())
+
+        # Tokenize conversations
+
+        if has_image:
+            input_ids = torch.stack([tokenizer_image_token(prompt, tokenizer, return_tensors='pt') for prompt in conversations], dim=0)
+        else:
+            input_ids = tokenizer(
+                conversations,
+                return_tensors="pt",
+                padding="longest",
+                max_length=tokenizer.model_max_length,
+                truncation=True,
+            ).input_ids
+
+        targets = input_ids.clone()
+
+        assert conv.sep_style == conversation_lib.SeparatorStyle.TWO
+
+        # Mask targets
+        sep = conv.sep + conv.roles[1] + ": "
+        for conversation, target in zip(conversations, targets):
+            total_len = int(target.ne(tokenizer.pad_token_id).sum())
+
+            rounds = conversation.split(conv.sep2)
+            cur_len = 1
+            target[:cur_len] = IGNORE_INDEX
+            for i, rou in enumerate(rounds):
+                if rou == "":
+                    break
+
+                parts = rou.split(sep)
+                if len(parts) != 2:
+                    break
+                parts[0] += sep
+
+                if has_image:
+                    round_len = len(tokenizer_image_token(rou, tokenizer))
+                    instruction_len = len(tokenizer_image_token(parts[0], tokenizer)) - 2
+                else:
+                    round_len = len(tokenizer(rou).input_ids)
+                    instruction_len = len(tokenizer(parts[0]).input_ids) - 2
+
+                if i != 0 and not tokenizer.legacy and IS_TOKENIZER_GREATER_THAN_0_14:
+                    round_len -= 1
+                    instruction_len -= 1
+
+                target[cur_len : cur_len + instruction_len] = IGNORE_INDEX
+
+                cur_len += round_len
+            target[cur_len:] = IGNORE_INDEX
+
+            if cur_len < tokenizer.model_max_length:
+                if cur_len != total_len:
+                    target[:] = IGNORE_INDEX
+                    print(
+                        f"WARNING: tokenization mismatch: {cur_len} vs. {total_len}."
+                        f" (ignored)"
+                    )
+
+        return dict(
+            input_ids=input_ids,
+            labels=targets,
+        )
+
+    def _get_item(self, i) -> Dict[str, torch.Tensor]:
+        key_candidate=list(self.list_data_dict.keys())
+
+        key=key_candidate[i]
+
+        image_seq_path = self.list_data_dict[key]['image_ids']
+
+        image_seq=[]
+        for img in image_seq_path:
+            data=np.array(Image.open(img).convert("RGB"))
+
+            image_seq.append(data)
+        video=np.stack(image_seq)
+
+        processor = self.data_args.image_processor
+        image = processor.preprocess(video, return_tensors='pt')['pixel_values']
+
+        # image_tensors = torch.stack(image_tensors)  
+        image = [(image, video[0].size,"video")]
+        sources = self.preprocess_multimodal_mcdata(self.list_data_dict[key])
+
+        # data_dict = preprocess(
+        #     sources,
+        #     self.tokenizer,
+        #     has_image=True,
+        #     prompt=self.data_args.input_prompt,
+        #     refine_prompt=self.data_args.refine_prompt)
+        data_dict = self.preprocess_mcdata(
             sources,
             self.tokenizer,
             has_image=True,
@@ -1432,15 +1867,75 @@ class DataCollatorForSupervisedDataset(object):
             batch['prompts'] = [instance['prompt'] for instance in instances]
 
         return batch
+@dataclass
+class DataCollatorForSupervisedDataset(object):
+    """Collate examples for supervised fine-tuning."""
+
+    tokenizer: transformers.PreTrainedTokenizer
+
+    def pad_sequence(self, input_ids, batch_first, padding_value):
+        if self.tokenizer.padding_side == "left":
+            input_ids = [torch.flip(_input_ids, [0]) for _input_ids in input_ids] 
+        input_ids = torch.nn.utils.rnn.pad_sequence(
+            input_ids,
+            batch_first=batch_first,
+            padding_value=padding_value)
+        if self.tokenizer.padding_side == "left":
+            input_ids = torch.flip(input_ids, [1])
+        return input_ids
+
+    def __call__(self, instances: Sequence[Dict]) -> Dict[str, torch.Tensor]:
+        input_ids, labels = tuple([instance[key] for instance in instances]
+                                  for key in ("input_ids", "labels"))
+        # import pdb;pdb.set_trace()
+        input_ids = [_input_ids[:self.tokenizer.model_max_length] for _input_ids in input_ids]
+        labels = [_labels[:self.tokenizer.model_max_length] for _labels in labels]
+        input_ids = self.pad_sequence(
+            input_ids,
+            batch_first=True,
+            padding_value=self.tokenizer.pad_token_id)
+        labels = self.pad_sequence(labels,
+                                   batch_first=True,
+                                   padding_value=IGNORE_INDEX)
+        batch = dict(
+            input_ids=input_ids,
+            labels=labels,
+            attention_mask=input_ids.ne(self.tokenizer.pad_token_id),
+        )
+
+        if 'image' in instances[0]:
+            # instances[1]['image'][0][0].shape
+            # torch.Size([5, 3, 224, 224])
+            images = [instance['image'] for instance in instances]
+        
+            batch['image_sizes'] = [im[1] for im_list in images for im in im_list]
+            batch['modalities'] = [im[2] for im_list in images for im in im_list]
+            images = [im[0] for im_list in images for im in im_list]
+            # import pdb;pdb.set_trace()
+            
+
+            if all(x is not None and x.shape == images[0].shape for x in images):
+                # Image: (N, P, C, H, W)
+                # Video: (N, F, C, H, W)
+                batch['images'] = torch.stack(images)
+            else:
+                batch['images'] = images
+
+        # import pdb;pdb.set_trace()
+        if 'prompt' in instances[0]:
+            batch['prompts'] = [instance['prompt'] for instance in instances]
+
+        return batch
 
 def make_supervised_data_module(tokenizer: transformers.PreTrainedTokenizer,
                                 data_args) -> Dict:
     """Make dataset and collator for supervised fine-tuning."""
-    train_dataset = OctopusDataset(tokenizer=tokenizer,
+    train_dataset =OctoGTADataset(tokenizer=tokenizer,
                                 data_path=data_args.data_path,
                                 data_args=data_args)
-    train_dataset._get_item(2)
+    # train_dataset._get_item(1)
     data_collator = DataCollatorForSupervisedDataset(tokenizer=tokenizer)
+    # data_collator.__call__([instance])#for test
     return dict(train_dataset=train_dataset,
                 eval_dataset=None,
                 data_collator=data_collator)
@@ -1481,6 +1976,30 @@ def train():
                 cache_dir=training_args.cache_dir,
                 **bnb_model_from_pretrained_args 
             )
+            if not model_args.pretrain_mm_mlp_adapter:
+                cfg_pretrained = AutoConfig.from_pretrained(model_args.model_name_or_path)
+                overwrite_config = {}
+                overwrite_config["mm_resampler_type"] = model_args.mm_resampler_type
+                overwrite_config["mm_spatial_pool_stride"] = model_args.mm_spatial_pool_stride
+                overwrite_config["mm_spatial_pool_out_channels"] = model_args.mm_spatial_pool_out_channels
+                overwrite_config["mm_spatial_pool_mode"] = model_args.mm_spatial_pool_mode
+
+                if "224" in model_args.vision_tower:
+                    # suppose the length of text tokens is around 1000, from bo's report
+                    least_token_number = data_args.frames_upbound*(16//model_args.mm_spatial_pool_stride)**2 + 1000
+                else:
+                    least_token_number = data_args.frames_upbound*(24//model_args.mm_spatial_pool_stride)**2 + 1000
+                
+                scaling_factor = math.ceil(least_token_number/4096)
+                if scaling_factor >= 2:
+                    overwrite_config["rope_scaling"] = {"factor": float(scaling_factor), "type": "linear"}
+                    overwrite_config["max_sequence_length"] = 4096 * scaling_factor
+                    overwrite_config["tokenizer_model_max_length"] = 4096 * scaling_factor
+                    training_args.model_max_length = 4096 * scaling_factor
+
+                print(f"Overwriting config with {overwrite_config}")
+                for k, v in overwrite_config.items():
+                    setattr(cfg_pretrained, k, v)
         elif 'mixtral' in model_args.model_name_or_path.lower():
             model = LlavaMixtralForCausalLM.from_pretrained(
                 model_args.model_name_or_path,

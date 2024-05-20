@@ -256,10 +256,10 @@ class LlavaMetaForCausalLM(ABC):
                         assert height * width == base_image_feature.shape[0]
                         # import pdb; pdb.set_trace()
                         if image_aspect_ratio == 'anyres':
-                            try:
-                                num_patch_width, num_patch_height = get_anyres_image_grid_shape(image_sizes[image_idx], self.config.image_grid_pinpoints, self.get_vision_tower().config.image_size)
-                            except:
-                                import pdb; pdb.set_trace() 
+                            # try:
+                            num_patch_width, num_patch_height = get_anyres_image_grid_shape(image_sizes[image_idx], self.config.image_grid_pinpoints, self.get_vision_tower().config.image_size)
+                            # except:
+                            #     import pdb; pdb.set_trace() 
                             image_feature = image_feature.view(num_patch_height, num_patch_width, height, width, -1)
                         else:
                             image_feature = image_feature.view(2, 2, height, width, -1)
@@ -357,7 +357,11 @@ class LlavaMetaForCausalLM(ABC):
                 cur_new_input_embeds.append(cur_input_embeds_no_im[i])
                 cur_new_labels.append(cur_labels_noim[i])
                 if i < num_images:
+                
                     cur_image_features = image_features[cur_image_idx]
+                    # except:
+                    #     cur_image_idx=len(input_ids)-1
+                    #     cur_image_features = image_features[cur_image_idx]
                     cur_image_idx += 1
                     cur_new_input_embeds.append(cur_image_features)
                     cur_new_labels.append(torch.full((cur_image_features.shape[0],), IGNORE_INDEX, device=cur_labels.device, dtype=cur_labels.dtype))
